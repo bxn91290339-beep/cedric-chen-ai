@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; script-src-attr 'unsafe-inline';">
     <title>Cedric-Chen | Pure Voice Mode</title>
     <style>
         @property --eye-x { syntax: '<number>'; inherits: true; initial-value: 1; }
@@ -484,14 +485,16 @@
         
         let currentAbortController = null; 
 
-        window.addEventListener('DOMContentLoaded', loadChatRooms);
-
-        // Enter tuşu için yeni olay dinleyicisi
-        document.getElementById('question').addEventListener('keydown', function(event) {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                askAI();
-            }
+        window.addEventListener('DOMContentLoaded', () => {
+            loadChatRooms();
+            
+            // Enter tuşu için olay dinleyicisi
+            document.getElementById('question').addEventListener('keydown', function(event) {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    askAI();
+                }
+            });
         });
 
         function formatAIResponse(text) {
