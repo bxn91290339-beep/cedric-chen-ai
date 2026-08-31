@@ -36,7 +36,6 @@
             background-size: 8px 8px; z-index: -3; pointer-events: none;
         }
 
-        /* 👑 TAM ORTADA DURAN ŞIK SINAV YÜKLEYİCİSİ */
         #top-left-loader {
             position: fixed;
             top: 50%;
@@ -387,7 +386,7 @@
         }
     </style>
 </head>
-<body oncontextmenu="return false;">
+<body>
 
     <div id="top-left-loader">
         <div class="spinner-ring"></div>
@@ -413,25 +412,23 @@
     </div>
 
     <div id="main-chat-area">
-        <button id="new-chat-btn" onclick="startNewChat()">+ Yeni Sohbet</button>
+        <button id="new-chat-btn">+ Yeni Sohbet</button>
         <div id="chat-stream">
             <div class="msg ai"><span class="res-text">Cedric-Chen Hazır. Ses moduna geçmek için mikrofona dokun...</span></div>
         </div>
         <div class="input-container-wrapper">
             <div id="file-preview-zone">
                 <span id="file-details">📂 dosya yüklendi</span>
-                <button onclick="clearAttachedFile()">✕</button>
+                <button id="clear-file-btn">✕</button>
             </div>
             <div class="input-zone">
-                <button class="action-btn" onclick="document.getElementById('file-input').click()">+</button>
-                <input type="file" id="file-input" style="display: none;" onchange="processFile(this)">
+                <button id="add-file-btn" class="action-btn">+</button>
+                <input type="file" id="file-input" style="display: none;">
                 <input type="text" id="question" placeholder="Cedric-Chen'e fısılda...">
                 
-                <!-- 🔴 SOHBETİ DURDURMA BUTONU -->
-                <button id="stop-chat-btn" onclick="stopAIStream()">🛑 Durdur</button>
-
-                <button class="submit-text-btn" onclick="askAI()">İLET</button>
-                <button id="voice-btn" class="action-btn" onclick="togglePureVoiceMode()">🎙️</button>
+                <button id="stop-chat-btn">🛑 Durdur</button>
+                <button id="submit-text-btn" class="submit-text-btn">İLET</button>
+                <button id="voice-btn" class="action-btn">🎙️</button>
             </div>
         </div>
     </div>
@@ -439,7 +436,7 @@
     <div id="sidebar-history">
         <div class="history-title" style="font-weight: bold; margin-bottom: 5px; color: var(--accent);">Sohbet Odaları</div>
         <div id="chat-rooms-list"></div>
-        <button onclick="clearServerHistory()" style="background: rgba(239,68,68,0.1); border: 1px solid #ef4444; color: #ef4444; padding: 8px 10px; border-radius: 10px; cursor: pointer; font-size: 0.85em; width: 100%; margin-top: auto; flex-shrink: 0;">Hafızayı Temizle</button>
+        <button id="clear-history-btn" style="background: rgba(239,68,68,0.1); border: 1px solid #ef4444; color: #ef4444; padding: 8px 10px; border-radius: 10px; cursor: pointer; font-size: 0.85em; width: 100%; margin-top: auto; flex-shrink: 0;">Hafızayı Temizle</button>
     </div>
 
     <script>
@@ -488,11 +485,38 @@
         window.addEventListener('DOMContentLoaded', () => {
             loadChatRooms();
             
-            // Enter tuşu için olay dinleyicisi
+            // Mevcut olay dinleyicisi
             document.getElementById('question').addEventListener('keydown', function(event) {
                 if (event.key === 'Enter') {
                     event.preventDefault();
                     askAI();
+                }
+            });
+
+            // 🟢 CSP İhlalini Kesen Yeni Statik Olay Dinleyicileri
+            document.body.addEventListener('contextmenu', e => e.preventDefault());
+            document.getElementById('new-chat-btn').addEventListener('click', startNewChat);
+            document.getElementById('clear-file-btn').addEventListener('click', clearAttachedFile);
+            document.getElementById('add-file-btn').addEventListener('click', () => document.getElementById('file-input').click());
+            document.getElementById('file-input').addEventListener('change', function() { processFile(this); });
+            document.getElementById('stop-chat-btn').addEventListener('click', stopAIStream);
+            document.getElementById('submit-text-btn').addEventListener('click', askAI);
+            document.getElementById('voice-btn').addEventListener('click', togglePureVoiceMode);
+            document.getElementById('clear-history-btn').addEventListener('click', clearServerHistory);
+
+            // 🟢 Dinamik Üretilen İçerik İçin Olay Delegasyonu (Event Delegation)
+            document.getElementById('chat-stream').addEventListener('click', function(e) {
+                const copyBtn = e.target.closest('.copy-code-btn');
+                if (copyBtn) {
+                    copyCodeBlock(copyBtn);
+                    return;
+                }
+
+                const quizBtn = e.target.closest('.quiz-option-btn');
+                if (quizBtn && !quizBtn.hasAttribute('disabled')) {
+                    const uniqueId = quizBtn.getAttribute('data-quiz-id');
+                    const key = quizBtn.getAttribute('data-key');
+                    checkQuizAnswer(uniqueId, key, quizBtn);
                 }
             });
         });
@@ -566,7 +590,7 @@
                                     let key = opt.charAt(0).toUpperCase();
                                     let optionCleanText = opt.substring(2).trim();
                                     html += `
-                                        <button class="quiz-option-btn" onclick="checkQuizAnswer('${uniqueId}', '${key}', this)">
+                                        <button class="quiz-option-btn" data-quiz-id="${uniqueId}" data-key="${key}">
                                             <strong>${key})</strong> <span>${optionCleanText}</span>
                                         </button>
                                     `;
@@ -609,7 +633,7 @@
                     result += `
                         <div class="code-block-container">
                             <div class="code-block-header">
-                                <button onclick="copyCodeBlock(this)">Kopyala</button>
+                                <button class="copy-code-btn">Kopyala</button>
                             </div>
                             <pre><code>${parts[i]}</code></pre>
                         </div>
@@ -886,7 +910,6 @@
             let aiMessageDiv = null; let resSpan = null;
             const lowerText = text.toLowerCase();
             
-            // 💡 GENİŞLETİLMİŞ CLIENT-SIDE ANLIK YÜZ İFADESİ KONTROLÜ (Zehra Koruması eklendi)
             const isZehraThreat = lowerText.includes("zehra benim") || (lowerText.includes("zehra") && /(kötü|çirkin|aptal|salak|nefret|sevmiyorum|ayrıl|bırak)/.test(lowerText));
 
             if (isZehraThreat || /(sinir|aptal|saçma|kızgın|nefret|bıktım|off|yeter|kötü|çıldır)/.test(lowerText)) applySphereEmotion('sinirli');
@@ -964,7 +987,6 @@
                             try {
                                 const parsed = JSON.parse(dataText);
                                 
-                                // 🟢 SUNUCUDAN GELEN YENİ VE DAHA GENİŞ DUYGU VERİSİNİ OKUMA
                                 if (parsed.emotion) {
                                     applySphereEmotion(parsed.emotion);
                                 }
