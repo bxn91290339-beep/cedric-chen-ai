@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cedric-Chen | Pure Voice Mode</title>
+    <style>
+        @property --eye-x { syntax: '<number>'; inherits: true; initial-value: 1; }
+        @property --eye-y { syntax: '<number>'; inherits: true; initial-value: 1; }
+
+        :root { 
+            --accent: #38bdf8; 
+            --glow: rgba(56, 189, 248, 0.8); 
+            --bg: #000000; 
+            --eye-x: 1;
+            --eye-y: 1;
+        }
+        
+        /* DİNAMİK DUYGU MODLARI */
+        body.angry-mode { 
+            --accent: #ef4444 !important; 
+            --glow: rgba(239, 68, 68, 0.9) !important; 
+            --eye-y: 0.5 !important; 
+        } 
+        body.happy-mode { --accent: #22c55e; --glow: rgba(34, 197, 94, 0.8); --eye-y: 0.85; }
+        body.shy-mode { --accent: #f472b6; --glow: rgba(244, 114, 182, 0.8); --eye-x: 0.75; --eye-y: 0.75; }
+        body.surprised-mode { --accent: #eab308; --glow: rgba(234, 179, 8, 0.8); --eye-x: 1.3; --eye-y: 1.3; }
+
+        body { margin: 0; background: var(--bg); color: white; font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; display: flex; transition: background 0.5s; }
+
+        #space-canvas { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -4; }
+        .the-sphere-matrix {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: radial-gradient(rgba(255, 255, 255, 0.05) 1.5px, transparent 1.5px);
+            background-size: 8px 8px; z-index: -3; pointer-events: none;
+        }
+
+        /* 👑 TAM ORTADA DURAN ŞIK SINAV YÜKLEYİCİSİ */
+        #top-left-loader {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+            align-items: center;
+            gap: 14px;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            padding: 16px 26px;
+            border-radius: 40px;
+            z-index: 9999;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 0 40px rgba(56, 189, 248, 0.35);
+        }
+        #top-left-loader.show {
+            display: flex !important;
+            animation: loaderFadeIn 0.3s ease forwards;
+        }
+        #top-left-loader .spinner-ring {
+            width: 22px;
+            height: 22px;
+            border: 3px solid rgba(56, 189, 248, 0.2);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spinCircle 0.8s linear infinite;
+        }
+        #top-left-loader span {
+            font-size: 1.05em;
+            font-weight: 600;
+            color: #f8fafc;
+            letter-spacing: 0.5px;
+            text-shadow: 0 0 10px var(--glow);
+        }
+        @keyframes spinCircle { to { transform: rotate(360deg); } }
+        @keyframes loaderFadeIn { from { opacity: 0; transform: translate(-50%, -45%); } to { opacity: 1; transform: translate(-50%, -50%); } }
+
+        #sphere-face-container { 
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; 
+            z-index: -2; display: flex; flex-direction: column; justify-content: center; align-items: center; pointer-events: none; 
+        }
+        #sphere-face {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 70px; width: 700px; height: 500px;
+            animation: sphereFloat 6s ease-in-out infinite; transform-origin: center;
+            opacity: 0.6; transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        @keyframes sphereFloat {
+            0%, 100% { transform: translateY(0px) scale(1); filter: drop-shadow(0 0 40px var(--glow)); }
+            50% { transform: translateY(-25px) scale(1.02); filter: drop-shadow(0 0 80px var(--glow)); }
+        }
+
+        #thinking-text {
+            color: var(--accent);
+            font-size: 1.4em;
+            font-weight: bold;
+            font-family: 'Inter', sans-serif;
+            letter-spacing: 1px;
+            margin-top: 30px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease, transform 0.4s ease;
+            text-shadow: 0 0 15px var(--glow);
+            transform: translateY(10px);
+        }
+        #thinking-text.active {
+            opacity: 1;
+            transform: translateY(0);
+            animation: thinkingPulse 1.5s infinite ease-in-out alternate;
+        }
+        @keyframes thinkingPulse {
+            0% { transform: scale(0.97); filter: brightness(0.8); }
+            100% { transform: scale(1.03); filter: brightness(1.2); text-shadow: 0 0 25px var(--glow); }
+        }
+
+        .brows-row, .eyes-row { display: flex; justify-content: space-between; width: 100%; padding: 0 40px; box-sizing: border-box; }
+        .brow, #mouth {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            background: var(--accent); box-shadow: 0 0 30px var(--glow), inset 0 0 10px rgba(255,255,255,0.4);
+        }
+        .eye {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), --eye-x 0.4s, --eye-y 0.4s;
+            background: var(--accent); box-shadow: 0 0 30px var(--glow), inset 0 0 10px rgba(255,255,255,0.4);
+            width: 100px; height: 45px; border-radius: 50%; transform-origin: center; 
+            animation: organicBlink 4.5s infinite;
+        }
+
+        .brow { width: 90px; height: 7px; border-radius: 4px; transform-origin: center; }
+        #mouth { width: 140px; height: 8px; border-radius: 4px; transform-origin: center; }
+
+        @keyframes organicBlink { 
+            0%, 45%, 52%, 100% { transform: scaleX(var(--eye-x)) scaleY(var(--eye-y)); } 
+            48.5% { transform: scaleX(var(--eye-x)) scaleY(0.02); } 
+        }
+
+        #sphere-face.speaking #mouth { 
+            animation: talking 0.15s infinite alternate !important; 
+            border-radius: 50% !important; 
+            width: 95px !important; 
+            height: 45px !important; 
+            background: transparent !important; 
+            border: 5px solid var(--accent) !important; 
+            box-shadow: 0 0 35px var(--glow) !important; 
+        }
+        @keyframes talking { 
+            0% { transform: scaleY(0.7) scaleX(0.9); } 
+            100% { transform: scaleY(1.3) scaleX(1.1); } 
+        }
+
+        body.angry-mode #brow-l { transform: rotate(22deg) translateY(12px) !important; background: var(--accent) !important; }
+        body.angry-mode #brow-r { transform: rotate(-22deg) translateY(12px) !important; background: var(--accent) !important; }
+        body.angry-mode #mouth { transform: scaleY(0.4) !important; border-radius: 2px !important; }
+
+        body.happy-mode .eye { border-radius: 50% 50% 0 0; }
+        body.happy-mode #mouth { width: 160px; height: 40px; border-radius: 0 0 80px 80px; background: transparent; border: 6px solid var(--accent); border-top: none; box-shadow: none; }
+        
+        body.shy-mode #brow-l { transform: rotate(-12deg) translateY(-4px); }
+        body.shy-mode #brow-r { transform: rotate(12deg) translateY(-4px); }
+        body.surprised-mode #mouth { width: 50px; height: 50px; border-radius: 50%; }
+
+        /* ANA EKRAN VE YAN PANEL */
+        #main-chat-area { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: 40px 5vw; z-index: 1; position: relative; transition: opacity 0.5s ease; }
+        
+        #sidebar-history { flex: 0 0 280px; width: 280px; padding: 40px 20px; display: flex; flex-direction: column; gap: 15px; border-left: 1px solid rgba(255,255,255,0.05); background: linear-gradient(90deg, transparent, rgba(0,0,0,0.5)); z-index: 1; overflow-y: auto; scrollbar-width: none; transition: transform 0.5s ease; box-sizing: border-box; }
+        #chat-rooms-list { display: flex; flex-direction: column; gap: 10px; flex-grow: 1; overflow-y: auto; scrollbar-width: none; margin-top: 10px; }
+        
+        .chat-room-item { 
+            flex-shrink: 0; width: 100%; padding: 14px 15px; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; cursor: pointer; font-size: 0.95em; color: #b4f4ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: all 0.2s ease; text-align: left; font-family: 'Inter', sans-serif; box-sizing: border-box;
+        }
+        .chat-room-item:hover { background: rgba(56, 189, 248, 0.08); border-color: rgba(56, 189, 248, 0.3); color: white; box-shadow: 0 0 10px rgba(56, 189, 248, 0.15); }
+        .chat-room-item.active { background: rgba(56, 189, 248, 0.15); border-color: var(--accent); color: white; font-weight: bold; box-shadow: 0 0 15px var(--glow); }
+
+        #new-chat-btn { position: absolute; top: 40px; left: 5vw; background: transparent; border: 1px solid rgba(255,255,255,0.15); color: white; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-size: 0.9em; transition: 0.3s; }
+        #new-chat-btn:hover { border-color: var(--accent); box-shadow: 0 0 15px var(--glow); color: var(--accent); }
+
+        #chat-stream { flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; padding-bottom: 20px; margin-top: 80px; scrollbar-width: none; }
+        
+        .msg { padding: 0; margin: 0; max-width: 100%; font-size: 1.15em; line-height: 1.6; transition: color 0.4s ease; word-wrap: break-word; white-space: pre-wrap; }
+        .res-text { white-space: pre-wrap; width: 100%; display: block; }
+        
+        .user { align-self: flex-end; color: var(--accent); text-shadow: 0 0 15px var(--glow); text-align: right; max-width: 75%; }
+        .ai { align-self: flex-start; color: #f8fafc; width: 100%; }
+        
+        .ai a { color: #38bdf8; text-decoration: underline; font-weight: 500; transition: color 0.2s; }
+        .ai a:hover { color: #7dd3fc; text-shadow: 0 0 8px var(--glow); }
+
+        /* KOD BLOKLARI */
+        .code-block-container {
+            background: #0f172a; border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 12px; margin: 15px 0; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.6); width: 100%; max-width: 100%;
+        }
+        .code-block-header { background: #020617; padding: 8px 16px; display: flex; justify-content: flex-end; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .code-block-header button { background: rgba(56, 189, 248, 0.1); border: 1px solid var(--accent); color: var(--accent); padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8em; font-family: 'Inter', sans-serif; transition: all 0.2s; }
+        .code-block-header button:hover { background: var(--accent); color: #000; box-shadow: 0 0 10px var(--glow); }
+        .code-block-container pre { margin: 0; padding: 16px; overflow-x: auto; }
+        .code-block-container code { font-family: 'Fira Code', 'Courier New', Courier, monospace; font-size: 0.92em; color: #e2e8f0; white-space: pre-wrap; word-break: break-all; }
+
+        /* --- 🌟 GEMINI TARZI GENİŞ QUIZ SAYFA YAPISI 🌟 --- */
+        .quiz-page-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            width: 100%;
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 35px;
+            background: rgba(8, 14, 28, 0.85);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 40px rgba(56, 189, 248, 0.08);
+            backdrop-filter: blur(12px);
+            box-sizing: border-box;
+            animation: geminiPageOpen 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes geminiPageOpen {
+            from { opacity: 0; transform: translateY(40px) scale(0.97); filter: blur(4px); }
+            to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+        }
+
+        .interactive-quiz-container {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 16px;
+            padding: 24px;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+        .interactive-quiz-container:hover {
+            border-color: rgba(56, 189, 248, 0.2);
+            background: rgba(255, 255, 255, 0.03);
+        }
+        
+        .quiz-question { font-size: 1.2em; font-weight: 600; color: #ffffff; margin-bottom: 20px; line-height: 1.6; text-shadow: 0 0 10px rgba(255,255,255,0.05); }
+        .quiz-options { display: flex; flex-direction: column; gap: 12px; }
+        
+        .quiz-option-btn {
+            background: rgba(255, 255, 255, 0.02); 
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+            color: #cbd5e1; 
+            padding: 16px 20px; 
+            border-radius: 12px; 
+            cursor: pointer; 
+            font-size: 1.05em; 
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); 
+            font-family: 'Inter', sans-serif; 
+            width: 100%; 
+            box-sizing: border-box;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            text-align: left;
+        }
+        .quiz-option-btn strong { color: var(--accent); flex-shrink: 0; min-width: 24px; display: inline-block; }
+        .quiz-option-btn span { word-break: break-word; line-height: 1.4; }
+        
+        .quiz-option-btn:hover:not([disabled]) { background: rgba(56, 189, 248, 0.08); border-color: var(--accent); box-shadow: 0 0 12px rgba(56, 189, 248, 0.2); color: white; }
+        .quiz-option-btn.correct { background: rgba(34, 197, 94, 0.15) !important; border-color: #22c55e !important; color: #22c55e !important; font-weight: bold; box-shadow: 0 0 15px rgba(34, 197, 94, 0.25); }
+        .quiz-option-btn.incorrect { background: rgba(239, 68, 68, 0.15) !important; border-color: #ef4444 !important; color: #ef4444 !important; }
+        .quiz-feedback { margin-top: 15px; padding: 14px; border-radius: 10px; font-size: 1em; text-align: center; font-weight: bold; animation: feedbackFade 0.4s ease; }
+        @keyframes feedbackFade { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* 📊 QUIZ EN ALT SONUÇ TABLOSU CSS */
+        .quiz-result-container {
+            margin-top: 35px;
+            padding: 25px;
+            background: rgba(2, 6, 23, 0.75);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 16px;
+            box-shadow: inset 0 0 20px rgba(56, 189, 248, 0.05);
+            animation: geminiPageOpen 0.5s ease;
+        }
+        .result-table-title {
+            font-size: 1.25em;
+            font-weight: bold;
+            color: var(--accent);
+            margin-bottom: 15px;
+            text-shadow: 0 0 15px var(--glow);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .quiz-result-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .quiz-result-table th, .quiz-result-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 1em;
+            color: #e2e8f0;
+            text-align: center; 
+            vertical-align: middle;
+        }
+        .quiz-result-table th {
+            background: rgba(56, 189, 248, 0.12);
+            color: var(--accent);
+            font-weight: 600;
+        }
+        .quiz-result-table tr:last-child td { border-bottom: none; }
+        
+        /* 🎯 KUSURSUZ ŞEKİLDE ORTALANMIŞ TABLO YAZISI PANELİ */
+        .quiz-result-placeholder {
+            display: block !important;
+            text-align: center !important;
+            width: 100% !important;
+            padding: 15px 0;
+            margin: 0 auto;
+            color: #cbd5e1;
+            font-size: 1.05em;
+            box-sizing: border-box;
+            clear: both;
+        }
+
+        .progress-bar-bg {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.08);
+            height: 10px;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 4px;
+        }
+        .progress-bar-fill {
+            background: linear-gradient(90deg, var(--accent), #22c55e);
+            height: 100%;
+            width: 0%;
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 8px var(--glow);
+        }
+
+        .input-container-wrapper { display: flex; flex-direction: column; gap: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; }
+        #file-preview-zone { display: none; align-items: center; gap: 10px; background: rgba(56, 189, 248, 0.1); border: 1px dashed var(--accent); padding: 8px 15px; border-radius: 10px; width: fit-content; font-size: 0.9em; color: var(--accent); }
+        #file-preview-zone button { background: transparent; border: none; color: #ef4444; cursor: pointer; }
+        .input-zone { display: flex; gap: 15px; align-items: center; }
+        .action-btn { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); color: white; width: 45px; height: 45px; border-radius: 50%; font-size: 1.3em; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.3s; }
+        .action-btn:hover { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 15px var(--glow); }
+        input[type="text"] { flex-grow: 1; background: transparent; border: none; padding: 15px 0; color: white; font-size: 1.2em; outline: none; }
+        .submit-text-btn { background: transparent; border: none; color: var(--accent); font-size: 1.1em; font-weight: bold; cursor: pointer; text-shadow: 0 0 15px var(--glow); }
+
+        /* 🔴 SOHBETİ DURDURMA BUTONU STİLLERİ */
+        #stop-chat-btn {
+            display: none;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid #ef4444;
+            color: #ef4444;
+            padding: 10px 18px;
+            border-radius: 20px;
+            font-size: 0.95em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+            font-family: 'Inter', sans-serif;
+        }
+        #stop-chat-btn:hover {
+            background: #ef4444;
+            color: white;
+            box-shadow: 0 0 25px rgba(239, 68, 68, 0.6);
+            transform: scale(1.05);
+        }
+
+        body.pure-voice-active #chat-stream, body.pure-voice-active input[type="text"], body.pure-voice-active .submit-text-btn, body.pure-voice-active #new-chat-btn, body.pure-voice-active .action-btn:not(#voice-btn), body.pure-voice-active #file-preview-zone, body.pure-voice-active #stop-chat-btn { opacity: 0 !important; pointer-events: none !important; }
+        body.pure-voice-active #sidebar-history { transform: translateX(100%); flex: 0 0 0; width: 0; padding: 0; }
+        body.pure-voice-active #main-chat-area { justify-content: center; align-items: center; }
+        body.pure-voice-active #voice-btn { width: 90px; height: 90px; font-size: 2.5em; background: #ef4444; border-color: #ef4444; box-shadow: 0 0 40px rgba(239, 68, 68, 0.8); animation: voicePulse 1.5s infinite; position: absolute; bottom: 10%; left: 50%; transform: translateX(-50%); z-index: 100; }
+        @keyframes voicePulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 25px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+
+        @media (max-width: 768px) {
+            body { position: relative; }
+            #sidebar-history { position: absolute; right: 0; top: 0; height: 100vh; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(10px); width: 260px; box-shadow: -5px 0 25px rgba(0,0,0,0.8); }
+            #main-chat-area { padding: 20px 4vw; }
+            #sphere-face { width: 100% !important; max-width: 320px !important; height: auto !important; gap: 35px !important; }
+            .brows-row, .eyes-row { padding: 0 20px; }
+            .eye { width: 55px !important; height: 25px !important; }
+            .brow { width: 55px !important; height: 5px !important; }
+            #mouth { width: 85px !important; height: 5px !important; }
+            #sphere-face.speaking #mouth { width: 55px !important; height: 25px !important; border-width: 4px !important; }
+            #thinking-text { font-size: 1.1em; margin-top: 15px; }
+            #new-chat-btn { top: 20px; left: 4vw; padding: 8px 16px; font-size: 0.8em; }
+            #chat-stream { margin-top: 65px; gap: 15px; }
+            .msg { font-size: 1.05em; }
+            input[type="text"] { font-size: 1.05em; }
+            .quiz-page-wrapper { padding: 15px; margin: 10px 0; }
+            .quiz-result-table th, .quiz-result-table td { padding: 8px; font-size: 0.85em; }
+        }
+    </style>
+</head>
+<body oncontextmenu="return false;">
+
+    <div id="top-left-loader">
+        <div class="spinner-ring"></div>
+        <span>Cedric-Chen Sınav Hazırlıyor...</span>
+    </div>
+
+    <canvas id="space-canvas"></canvas>
+    <div class="the-sphere-matrix"></div>
+
+    <div id="sphere-face-container">
+        <div id="sphere-face" class="neutral">
+            <div class="brows-row">
+                <div id="brow-l" class="brow"></div>
+                <div id="brow-r" class="brow"></div>
+            </div>
+            <div class="eyes-row">
+                <div id="eye-l" class="eye"></div>
+                <div id="eye-r" class="eye"></div>
+            </div>
+            <div id="mouth"></div>
+        </div>
+        <div id="thinking-text">Cedric Chen Zehra için düşünüyor...</div>
+    </div>
+
+    <div id="main-chat-area">
+        <button id="new-chat-btn" onclick="startNewChat()">+ Yeni Sohbet</button>
+        <div id="chat-stream">
+            <div class="msg ai"><span class="res-text">Cedric-Chen Hazır. Ses moduna geçmek için mikrofona dokun...</span></div>
+        </div>
+        <div class="input-container-wrapper">
+            <div id="file-preview-zone">
+                <span id="file-details">📂 dosya yüklendi</span>
+                <button onclick="clearAttachedFile()">✕</button>
+            </div>
+            <div class="input-zone">
+                <button class="action-btn" onclick="document.getElementById('file-input').click()">+</button>
+                <input type="file" id="file-input" style="display: none;" onchange="processFile(this)">
+                <input type="text" id="question" placeholder="Cedric-Chen'e fısılda..." onkeypress="if(event.key==='Enter') askAI()">
+                
+                <!-- 🔴 SOHBETİ DURDURMA BUTONU -->
+                <button id="stop-chat-btn" onclick="stopAIStream()">🛑 Durdur</button>
+
+                <button class="submit-text-btn" onclick="askAI()">İLET</button>
+                <button id="voice-btn" class="action-btn" onclick="togglePureVoiceMode()">🎙️</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="sidebar-history">
+        <div class="history-title" style="font-weight: bold; margin-bottom: 5px; color: var(--accent);">Sohbet Odaları</div>
+        <div id="chat-rooms-list"></div>
+        <button onclick="clearServerHistory()" style="background: rgba(239,68,68,0.1); border: 1px solid #ef4444; color: #ef4444; padding: 8px 10px; border-radius: 10px; cursor: pointer; font-size: 0.85em; width: 100%; margin-top: auto; flex-shrink: 0;">Hafızayı Temizle</button>
+    </div>
+
+    <script>
+        const CedricTools = {
+            getTime: () => "Şu an saat: " + new Date().toLocaleTimeString('tr-TR'),
+            getDate: () => "Bugün tarih: " + new Date().toLocaleDateString('tr-TR'),
+            calculate: (expr) => { try { return "Sonuç: " + eval(expr); } catch { return "Matematiksel bir hata oluştu."; } },
+            openSite: (url) => { window.open(url.includes('http') ? url : 'https://' + url, '_blank'); return "Sayfa açılıyor..."; }
+        };
+
+        function handleTools(text) {
+            const t = text.toLowerCase();
+            if (t.includes('saat kaç')) return CedricTools.getTime();
+            if (t.includes('tarih')) return CedricTools.getDate();
+            if (t.startsWith('hesapla ')) return CedricTools.calculate(t.replace('hesapla ', ''));
+            if (t.startsWith('aç ')) return CedricTools.openSite(t.replace('aç ', ''));
+            return null;
+        }
+
+        const canvas = document.getElementById('space-canvas');
+        const ctx = canvas.getContext('2d');
+        let stars = [];
+        function initSpace() {
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            stars = Array.from({length: 120}, () => ({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: Math.random() * 1.1, speed: Math.random() * 0.3 + 0.1 }));
+        }
+        function animateSpace() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            stars.forEach(star => { ctx.beginPath(); ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2); ctx.fill(); star.y -= star.speed; if(star.y < 0) star.y = canvas.height; });
+            requestAnimationFrame(animateSpace);
+        }
+        window.addEventListener('resize', initSpace); initSpace(); animateSpace();
+
+        const face = document.getElementById('sphere-face');
+        const thinkingText = document.getElementById('thinking-text');
+        const topLeftLoader = document.getElementById('top-left-loader');
+        const stopBtn = document.getElementById('stop-chat-btn');
+        let pureVoiceModeActive = false; 
+        let audioPlayer = new Audio();    
+        let activeChatId = null; 
+        let currentEmotion = 'notr'; 
+        
+        let currentAbortController = null; 
+
+        window.addEventListener('DOMContentLoaded', loadChatRooms);
+
+        function formatAIResponse(text) {
+            if (!text) return "";
+            
+            let processedText = text;
+            
+            if (processedText.includes('[QUIZ]') || processedText.includes('Soru ') || processedText.toLowerCase().includes('cevap anahtarı') || /\[QUIZ\]\s*\d+/i.test(processedText)) {
+                let workingText = processedText.replace(/```/g, ''); 
+                
+                let answerMap = {};
+                let upperText = workingText.toUpperCase();
+                
+                let cevapAnahtariIdx = upperText.lastIndexOf("CEVAP ANAHTARI");
+                if (cevapAnahtariIdx === -1) cevapAnahtariIdx = upperText.lastIndexOf("CEVAPLAR");
+                if (cevapAnahtariIdx === -1) cevapAnahtariIdx = upperText.lastIndexOf("ANSWERS");
+                
+                if (cevapAnahtariIdx !== -1) {
+                    let answerSection = upperText.substring(cevapAnahtariIdx);
+                    let ansRegex = /(\d+)\s*[\-\.\:\)]?\s*([A-E])/g;
+                    let ansMatch;
+                    while ((ansMatch = ansRegex.exec(answerSection)) !== null) {
+                        answerMap[ansMatch[1]] = ansMatch[2];
+                    }
+                }
+                
+                let quizBlocksHtml = "";
+                let introText = "";
+                
+                let segments = workingText.split(/(?:^|[\r\n]+)(?:\[QUIZ\]\s*(?:Soru\s*)?|Soru\s*)(\d+)\s*[:\.\-]/i);
+                
+                if (segments.length > 1) {
+                    introText = segments[0];
+                    for (let i = 1; i < segments.length; i += 2) {
+                        let qNum = segments[i].trim();
+                        let qContent = segments[i+1] || "";
+                        
+                        let cAnahtariIdx = qContent.toUpperCase().indexOf("CEVAP ANAHTARI");
+                        if (cAnahtariIdx === -1) cAnahtariIdx = qContent.toUpperCase().indexOf("CEVAPLAR");
+                        if (cAnahtariIdx === -1) cAnahtariIdx = qContent.toUpperCase().indexOf("ANSWERS");
+                        if (cAnahtariIdx !== -1) {
+                            qContent = qContent.substring(0, cAnahtariIdx);
+                        }
+                        
+                        let lines = qContent.trim().split('\n');
+                        let questionText = "";
+                        let options = [];
+                        
+                        lines.forEach(line => {
+                            let l = line.trim();
+                            if (/^[A-Ea-e][\)|\]|\.|\-]\s*/.test(l)) {
+                                options.push(l);
+                            } else if (l) {
+                                if (questionText) questionText += " " + l;
+                                else questionText = l;
+                            }
+                        });
+                        
+                        let korrectAns = answerMap[qNum] || "A";
+                        
+                        if (questionText || options.length > 0) {
+                            let uniqueId = 'quiz_dyn_' + qNum + '_' + Math.random().toString(36).substr(2, 5);
+                            let html = `<div class="interactive-quiz-container" id="${uniqueId}" data-correct="${korrectAns}">`;
+                            html += `<div class="quiz-question">Soru ${qNum}: ${questionText}</div>`;
+                            
+                            if (options.length > 0) {
+                                html += `<div class="quiz-options">`;
+                                options.forEach(opt => {
+                                    let key = opt.charAt(0).toUpperCase();
+                                    let optionCleanText = opt.substring(2).trim();
+                                    html += `
+                                        <button class="quiz-option-btn" onclick="checkQuizAnswer('${uniqueId}', '${key}', this)">
+                                            <strong>${key})</strong> <span>${optionCleanText}</span>
+                                        </button>
+                                    `;
+                                });
+                                html += `</div>`;
+                                html += `<div class="quiz-feedback" style="display:none;"></div>`;
+                            } else {
+                                html += `
+                                    <div class="classic-answer-card" style="margin-top: 15px; padding: 15px; background: rgba(56,189,248,0.03); border: 1px dashed rgba(56,189,248,0.3); border-radius: 12px; color: #94a3b8; font-size: 0.95em;">
+                                        ✍️ <strong>Klasik Soru Değerlendirmesi:</strong> Düşüncelerinizi veya çözüm adımlarınızı bu alana göre planlayabilirsiniz. Cevaplarınızı doğrudan Cedric'e yazarak kontrol ettirebilirsiniz.
+                                    </div>
+                                `;
+                            }
+                            
+                            html += `</div>`;
+                            quizBlocksHtml += html;
+                        }
+                    }
+                    
+                    if (quizBlocksHtml) {
+                        let initialTableHtml = `
+                            <div class="quiz-result-container">
+                                <div class="result-table-title">📊 Sınav Sonuç Raporu</div>
+                                <div class="quiz-result-placeholder">
+                                    Soruları cevapladıkça sonuçlarınız burada anlık güncellenecektir.
+                                </div>
+                            </div>
+                        `;
+                        return (introText.trim() ? `<div style="margin-bottom: 20px; color:#cbd5e1;">${introText}</div>` : "") + `<div class="quiz-page-wrapper">${quizBlocksHtml}${initialTableHtml}</div>`;
+                    }
+                }
+            }
+
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            const parts = processedText.split('```');
+            let result = "";
+            
+            for (let i = 0; i < parts.length; i++) {
+                if (i % 2 === 1) {
+                    result += `
+                        <div class="code-block-container">
+                            <div class="code-block-header">
+                                <button onclick="copyCodeBlock(this)">Kopyala</button>
+                            </div>
+                            <pre><code>${parts[i]}</code></pre>
+                        </div>
+                    `;
+                } else {
+                    result += parts[i].replace(urlRegex, function(url) {
+                        return `<a href="${url}" target="_blank">${url}</a>`;
+                    });
+                }
+            }
+            return result;
+        }
+
+        function updateQuizResultTable(wrapper) {
+            const containers = wrapper.querySelectorAll('.interactive-quiz-container');
+            let total = 0;
+            let answered = 0;
+            let correct = 0;
+            let incorrect = 0;
+
+            containers.forEach(c => {
+                const options = c.querySelectorAll('.quiz-option-btn');
+                if(options.length > 0) {
+                    total++;
+                    const isAnswered = Array.from(options).some(opt => opt.hasAttribute('disabled'));
+                    if (isAnswered) {
+                        answered++;
+                        if (c.querySelectorAll('.quiz-option-btn.incorrect').length > 0) {
+                            incorrect++;
+                        } else {
+                            correct++;
+                        }
+                    }
+                }
+            });
+
+            let resultTableContainer = wrapper.querySelector('.quiz-result-container');
+            if (!resultTableContainer || total === 0) return;
+
+            const successRate = total > 0 ? Math.round((correct / total) * 100) : 0;
+
+            resultTableContainer.innerHTML = `
+                <div class="result-table-title">📊 Sınav Sonuç Raporu</div>
+                <table class="quiz-result-table">
+                    <thead>
+                        <tr>
+                            <th>Toplam Soru</th>
+                            <th>Cevaplanan</th>
+                            <th>Doğru</th>
+                            <th>Yanlış</th>
+                            <th>Sınav Puanı</th>
+                            <th>Başarı Yüzdesi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>${total}</strong></td>
+                            <td>${answered} / ${total}</td>
+                            <td style="color: #22c55e; font-weight: bold;">${correct}</td>
+                            <td style="color: #ef4444; font-weight: bold;">${incorrect}</td>
+                            <td style="color: #eab308; font-weight: bold; font-size: 1.1em;">${successRate} / 100</td>
+                            <td>
+                                <div class="progress-bar-bg" style="max-width: 120px; margin: 0 auto 4px auto;">
+                                    <div class="progress-bar-fill" style="width: ${successRate}%"></div>
+                                </div>
+                                <span style="font-size: 0.9em; font-weight: bold; color: var(--accent);">%${successRate}</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function checkQuizAnswer(quizId, selectedKey, btn) {
+            const container = document.getElementById(quizId);
+            const correctKey = container.getAttribute('data-correct').trim().toUpperCase();
+            const options = container.querySelectorAll('.quiz-option-btn');
+            const feedback = container.querySelector('.quiz-feedback');
+            
+            options.forEach(opt => {
+                opt.setAttribute('disabled', 'true');
+                const optKey = opt.querySelector('strong').innerText.replace(')', '').trim().toUpperCase();
+                if (optKey === correctKey) {
+                    opt.classList.add('correct');
+                }
+            });
+            
+            if (selectedKey === correctKey) {
+                feedback.innerHTML = "🎉 Harika! Doğru Seçeneği Buldun.";
+                feedback.style.background = "rgba(34, 197, 94, 0.1)";
+                feedback.style.color = "#22c55e";
+                feedback.style.border = "1px solid #22c55e";
+            } else {
+                btn.classList.add('incorrect');
+                feedback.innerHTML = `❌ Yanlış Cevap! Doğru Seçenek: ${correctKey}`;
+                feedback.style.background = "rgba(239, 68, 68, 0.1)";
+                feedback.style.color = "#ef4444";
+                feedback.style.border = "1px solid #ef4444";
+            }
+            feedback.style.display = 'block';
+
+            const wrapper = container.closest('.quiz-page-wrapper');
+            if (wrapper) {
+                updateQuizResultTable(wrapper);
+            }
+        }
+
+        function copyCodeBlock(btn) {
+            const pre = btn.closest('.code-block-container').querySelector('pre code');
+            navigator.clipboard.writeText(pre.innerText).then(() => {
+                btn.innerText = "Kopyalandı! ✓"; btn.style.borderColor = "#22c55e"; btn.style.color = "#22c55e";
+                setTimeout(() => { btn.innerText = "Kopyala"; btn.style.borderColor = "var(--accent)"; btn.style.color = "var(--accent)"; }, 2000);
+            }).catch(() => { alert("Kopyalanamadı."); });
+        }
+
+        function applySphereEmotion(emotion) {
+            if (!emotion || emotion === currentEmotion) return;
+            currentEmotion = emotion; 
+            document.body.classList.remove('angry-mode', 'happy-mode', 'shy-mode', 'surprised-mode');
+            switch(emotion) {
+                case 'sinirli': document.body.classList.add('angry-mode'); break;
+                case 'mutlu': document.body.classList.add('happy-mode'); break;
+                case 'utangac': document.body.classList.add('shy-mode'); break;
+                case 'sasirmis': document.body.classList.add('surprised-mode'); break;
+            }
+        }
+
+        async function loadChatRooms() {
+            try {
+                const response = await fetch('http://localhost:3000/chats');
+                if (!response.ok) return;
+                const chats = await response.json();
+                const listContainer = document.getElementById('chat-rooms-list');
+                listContainer.innerHTML = '';
+                if (!activeChatId && chats.length > 0) {
+                    const activeServerChat = chats.find(c => c.active);
+                    if (activeServerChat) { activeChatId = activeServerChat.id; setTimeout(() => selectChat(activeChatId, false), 50); }
+                }
+                chats.forEach(chat => {
+                    const btn = document.createElement('button');
+                    btn.className = `chat-room-item ${chat.id === activeChatId ? 'active' : ''}`;
+                    btn.innerText = chat.title || "Yeni Sohbet";
+                    btn.onclick = () => selectChat(chat.id, true);
+                    listContainer.appendChild(btn);
+                });
+            } catch (e) {}
+        }
+
+        async function refreshRoomListOnly() {
+            try {
+                const response = await fetch('http://localhost:3000/chats');
+                if (!response.ok) return;
+                const chats = await response.json();
+                const listContainer = document.getElementById('chat-rooms-list');
+                listContainer.innerHTML = '';
+                chats.forEach(chat => {
+                    const btn = document.createElement('button');
+                    btn.className = `chat-room-item ${chat.id === activeChatId ? 'active' : ''}`;
+                    btn.innerText = chat.title || "Yeni Sohbet";
+                    btn.onclick = () => selectChat(chat.id, true);
+                    listContainer.appendChild(btn);
+                });
+            } catch (e) {}
+        }
+
+        async function selectChat(chatId, shouldSwitchBackend = true) {
+            activeChatId = chatId;
+            const chatStream = document.getElementById('chat-stream');
+            chatStream.innerHTML = '<div class="msg ai"><span class="res-text">Yükleniyor...</span></div>';
+            applySphereEmotion('notr'); 
+            try {
+                if (shouldSwitchBackend) {
+                    await fetch('http://localhost:3000/chats/switch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: chatId }) });
+                }
+                const response = await fetch(`http://localhost:3000/chats/${chatId}`);
+                if (!response.ok) throw new Error();
+                const chatData = await response.json();
+                chatStream.innerHTML = '';
+                const history = chatData.history || [];
+                if (history.length === 0) {
+                    chatStream.innerHTML = '<div class="msg ai"><span class="res-text">Bu oda henüz boş Eren.</span></div>';
+                } else {
+                    history.forEach(msg => {
+                        const isUser = (msg.role === 'User' || msg.role === 'user');
+                        const msgDiv = document.createElement('div');
+                        msgDiv.className = isUser ? 'msg user' : 'msg ai';
+                        if (isUser) { 
+                            msgDiv.innerText = msg.content; 
+                        } else { 
+                            const span = document.createElement('span'); 
+                            span.className = 'res-text'; 
+                            span.innerHTML = formatAIResponse(msg.content); 
+                            msgDiv.appendChild(span); 
+                        }
+                        chatStream.appendChild(msgDiv);
+                    });
+                }
+                chatStream.scrollTop = chatStream.scrollHeight;
+                await refreshRoomListOnly();
+            } catch (e) { chatStream.innerHTML = '<div class="msg ai" style="color: #ef4444;"><span class="res-text">Oda yüklenirken bir pürüz çıktı.</span></div>'; }
+        }
+
+        async function startNewChat() {
+            try {
+                const response = await fetch('http://localhost:3000/chats', { method: 'POST' });
+                if (!response.ok) throw new Error();
+                const newChat = await response.json();
+                activeChatId = newChat.id;
+                const chatStream = document.getElementById('chat-stream');
+                chatStream.innerHTML = '<div class="msg ai"><span class="res-text">Cedric-Chen Hazır. Ses moduna geçmek için mikrofona dokun...</span></div>';
+                applySphereEmotion('notr');
+                await refreshRoomListOnly();
+            } catch (e) {}
+        }
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition = null;
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.lang = 'tr-TR'; recognition.continuous = false; recognition.interimResults = false;
+            recognition.onstart = () => { if(audioPlayer) audioPlayer.pause(); face.classList.remove('speaking'); };
+            recognition.onresult = (event) => { const spokenText = event.results[0][0].transcript; if(spokenText.trim()) { sendVoiceToAI(spokenText); } };
+            recognition.onend = () => { if (pureVoiceModeActive && !face.classList.contains('speaking')) { try { recognition.start(); } catch(e) {} } };
+        }
+
+        function togglePureVoiceMode() {
+            if (!recognition) { alert("Tarayıcınız canlı ses mimarisini desteklemiyor."); return; }
+            if (pureVoiceModeActive) {
+                pureVoiceModeActive = false; document.body.classList.remove('pure-voice-active');
+                document.getElementById('voice-btn').innerHTML = "🎙️"; recognition.stop();
+                stopAIStream();
+            } else {
+                pureVoiceModeActive = true; document.body.classList.add('pure-voice-active');
+                document.getElementById('voice-btn').innerHTML = "🛑"; recognition.start();
+            }
+        }
+
+        function stopAIStream() {
+            if (currentAbortController) {
+                currentAbortController.abort();
+                currentAbortController = null;
+            }
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+            }
+            if (audioPlayer) {
+                audioPlayer.pause();
+            }
+            face.classList.remove('speaking');
+            if (thinkingText) thinkingText.classList.remove('active');
+            if (topLeftLoader) topLeftLoader.classList.remove('show');
+            if (stopBtn) stopBtn.style.display = 'none';
+            applySphereEmotion('notr');
+        }
+
+        async function sendVoiceToAI(text) {
+            const chatStream = document.getElementById('chat-stream');
+            const toolResult = handleTools(text);
+            if (toolResult) {
+                if (!pureVoiceModeActive) {
+                    chatStream.innerHTML += `<div class="msg user">${text}</div>`;
+                    chatStream.innerHTML += `<div class="msg ai"><span class="res-text">${toolResult}</span></div>`;
+                    chatStream.scrollTop = chatStream.scrollHeight;
+                } else {
+                    if ('speechSynthesis' in window) {
+                        const utterance = new SpeechSynthesisUtterance(toolResult); utterance.lang = 'tr-TR'; face.classList.add('speaking');
+                        utterance.onend = () => { face.classList.remove('speaking'); if (pureVoiceModeActive) { try { recognition.start(); } catch(e) {} } };
+                        window.speechSynthesis.speak(utterance);
+                    }
+                }
+                await refreshRoomListOnly(); return;
+            }
+
+            let aiMessageDiv = null; let resSpan = null;
+            const lowerText = text.toLowerCase();
+            
+            // 💡 GENİŞLETİLMİŞ CLIENT-SIDE ANLIK YÜZ İFADESİ KONTROLÜ (Zehra Koruması eklendi)
+            const isZehraThreat = lowerText.includes("zehra benim") || (lowerText.includes("zehra") && /(kötü|çirkin|aptal|salak|nefret|sevmiyorum|ayrıl|bırak)/.test(lowerText));
+
+            if (isZehraThreat || /(sinir|aptal|saçma|kızgın|nefret|bıktım|off|yeter|kötü|çıldır)/.test(lowerText)) applySphereEmotion('sinirli');
+            else if (/(utan|çekin|kızar|iltifat|mahcup|tatlı|aşk|seviyorum|şapşal)/.test(lowerText)) applySphereEmotion('utangac');
+            else if (/(şaşır|şok|inanılmaz|oha|yok artık|ciddi|gerçekten|vay|nasıl yani|şaka|hadi canım)/.test(lowerText)) applySphereEmotion('sasirmis');
+            else if (/(mutlu|harika|süper|teşekkür|gül|sevin|iyi|güzel|mükemmel)/.test(lowerText)) applySphereEmotion('mutlu');
+            else applySphereEmotion('notr');
+
+            const isQuizRequest = lowerText.includes('sınav') || lowerText.includes('quiz') || lowerText.includes('test') || lowerText.includes('soru');
+
+            stopAIStream();
+            currentAbortController = new AbortController();
+            const { signal } = currentAbortController;
+
+            try {
+                if (!activeChatId) await startNewChat();
+                if(!pureVoiceModeActive) { chatStream.innerHTML += `<div class="msg user">${text}</div>`; chatStream.scrollTop = chatStream.scrollHeight; }
+                
+                if(thinkingText) {
+                    if (isQuizRequest) {
+                        thinkingText.classList.remove('active');
+                    } else {
+                        thinkingText.innerText = "Cedric Chen Zehra için düşünüyor...";
+                        thinkingText.classList.add('active');
+                    }
+                }
+                
+                if(isQuizRequest && topLeftLoader) {
+                    topLeftLoader.classList.add('show');
+                }
+
+                if (!pureVoiceModeActive && stopBtn) {
+                    stopBtn.style.display = 'inline-block';
+                }
+
+                let finalQuestion = text;
+                if (isQuizRequest && (lowerText.includes('şık') || lowerText.includes('test'))) {
+                    finalQuestion += " (Lütfen test sorularını kesinlikle A, B, C, D, E dahil olmak üzere 5 şıklı formatta hazırla ve en sonuna Cevap Anahtarı ekle)";
+                }
+
+                const response = await fetch('http://localhost:3000/ask-cedric-chen-voice', { 
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify({ question: finalQuestion, sessionId: activeChatId }),
+                    signal: signal
+                });
+                
+                if (!response.ok) throw new Error();
+                
+                if(!pureVoiceModeActive) { 
+                    aiMessageDiv = document.createElement('div'); 
+                    aiMessageDiv.className = 'msg ai'; 
+                    resSpan = document.createElement('span'); 
+                    resSpan.className = 'res-text'; 
+                    aiMessageDiv.appendChild(resSpan); 
+                    chatStream.appendChild(aiMessageDiv); 
+                }
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                face.classList.add('speaking'); 
+
+                let partialLine = ''; let accumulatedText = "";
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = (partialLine + chunk).split('\n');
+                    partialLine = lines.pop(); 
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        if (trimmed.startsWith('data: ')) {
+                            const dataText = trimmed.replace('data: ', '').trim();
+                            if (dataText === '[DONE]') break;
+                            try {
+                                const parsed = JSON.parse(dataText);
+                                
+                                // 🟢 SUNUCUDAN GELEN YENİ VE DAHA GENİŞ DUYGU VERİSİNİ OKUMA
+                                if (parsed.emotion) {
+                                    applySphereEmotion(parsed.emotion);
+                                }
+                                
+                                if (parsed.text && resSpan) { 
+                                    accumulatedText += parsed.text;
+                                    resSpan.innerHTML = formatAIResponse(accumulatedText); 
+                                    
+                                    if (!accumulatedText.includes('quiz-page-wrapper')) {
+                                        chatStream.scrollTop = chatStream.scrollHeight; 
+                                    }
+                                }
+                            } catch (e) { }
+                        }
+                    }
+                }
+                
+                face.classList.remove('speaking');
+                if(thinkingText) thinkingText.classList.remove('active');
+                if(topLeftLoader) topLeftLoader.classList.remove('show'); 
+                if(stopBtn) stopBtn.style.display = 'none';
+
+                if (accumulatedText.includes('quiz-page-wrapper')) {
+                    setTimeout(() => {
+                        if (aiMessageDiv) {
+                            aiMessageDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                    }, 150);
+                } else {
+                    chatStream.scrollTop = chatStream.scrollHeight;
+                }
+
+                setTimeout(() => { applySphereEmotion('notr'); }, 3000);
+                await refreshRoomListOnly();
+                if(pureVoiceModeActive) setTimeout(() => { if(pureVoiceModeActive) recognition.start(); }, 400);
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    console.log("Akış kullanıcı tarafından başarıyla durduruldu.");
+                } else {
+                    face.classList.remove('speaking'); 
+                    if(thinkingText) thinkingText.classList.remove('active'); 
+                    if(topLeftLoader) topLeftLoader.classList.remove('show');
+                    if(stopBtn) stopBtn.style.display = 'none';
+                    applySphereEmotion('notr');
+                    if(!pureVoiceModeActive) { chatStream.innerHTML += `<div class="msg ai" style="color: #ef4444;"><span class="res-text">Bir pürüz çıktı Eren, tekrar dener misin?</span></div>`; chatStream.scrollTop = chatStream.scrollHeight; }
+                    if(pureVoiceModeActive) setTimeout(() => { if(pureVoiceModeActive) recognition.start(); }, 1000);
+                }
+            } finally {
+                currentAbortController = null;
+            }
+        }
+
+        async function askAI() { if(pureVoiceModeActive) return; const q = document.getElementById('question'); const userQ = q.value.trim(); if(!userQ) return; q.value = ''; await sendVoiceToAI(userQ); }
+        async function processFile(input) {
+            const file = input.files[0]; if (!file) return;
+            const previewZone = document.getElementById('file-preview-zone');
+            document.getElementById('file-details').innerText = `⏳ ${file.name} yükleniyor...`;
+            previewZone.style.display = 'flex';
+            const formData = new FormData(); formData.append('file', file);
+            try {
+                await fetch('http://localhost:3000/upload', { method: 'POST', body: formData });
+                document.getElementById('file-details').innerText = `📂 ${file.name} (Öğretildi)`;
+            } catch (error) { document.getElementById('file-details').innerText = `❌ Yükleme başarısız.`; }
+        }
+        function clearAttachedFile() { document.getElementById('file-input').value = ''; document.getElementById('file-preview-zone').style.display = 'none'; }
+        async function clearServerHistory() {
+            if(confirm("Cedric'in tüm hafızasını sıfırlamak istediğine emin misin?")) {
+                await fetch('http://localhost:3000/clear-history', { method: 'POST' });
+                alert("Tüm hafıza sıfırlandı."); activeChatId = null; startNewChat();
+            }
+        }
+    </script>
+</body>
+</html>
