@@ -424,7 +424,7 @@
             <div class="input-zone">
                 <button class="action-btn" onclick="document.getElementById('file-input').click()">+</button>
                 <input type="file" id="file-input" style="display: none;" onchange="processFile(this)">
-                <input type="text" id="question" placeholder="Cedric-Chen'e fısılda..." onkeypress="if(event.key==='Enter') askAI()">
+                <input type="text" id="question" placeholder="Cedric-Chen'e fısılda...">
                 
                 <!-- 🔴 SOHBETİ DURDURMA BUTONU -->
                 <button id="stop-chat-btn" onclick="stopAIStream()">🛑 Durdur</button>
@@ -485,6 +485,14 @@
         let currentAbortController = null; 
 
         window.addEventListener('DOMContentLoaded', loadChatRooms);
+
+        // Enter tuşu için yeni olay dinleyicisi
+        document.getElementById('question').addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                askAI();
+            }
+        });
 
         function formatAIResponse(text) {
             if (!text) return "";
@@ -728,7 +736,7 @@
 
         async function loadChatRooms() {
             try {
-                const response = await fetch('http://localhost:3000/chats');
+                const response = await fetch('/chats');
                 if (!response.ok) return;
                 const chats = await response.json();
                 const listContainer = document.getElementById('chat-rooms-list');
@@ -749,7 +757,7 @@
 
         async function refreshRoomListOnly() {
             try {
-                const response = await fetch('http://localhost:3000/chats');
+                const response = await fetch('/chats');
                 if (!response.ok) return;
                 const chats = await response.json();
                 const listContainer = document.getElementById('chat-rooms-list');
@@ -771,9 +779,9 @@
             applySphereEmotion('notr'); 
             try {
                 if (shouldSwitchBackend) {
-                    await fetch('http://localhost:3000/chats/switch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: chatId }) });
+                    await fetch('/chats/switch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: chatId }) });
                 }
-                const response = await fetch(`http://localhost:3000/chats/${chatId}`);
+                const response = await fetch(`/chats/${chatId}`);
                 if (!response.ok) throw new Error();
                 const chatData = await response.json();
                 chatStream.innerHTML = '';
@@ -803,7 +811,7 @@
 
         async function startNewChat() {
             try {
-                const response = await fetch('http://localhost:3000/chats', { method: 'POST' });
+                const response = await fetch('/chats', { method: 'POST' });
                 if (!response.ok) throw new Error();
                 const newChat = await response.json();
                 activeChatId = newChat.id;
@@ -916,7 +924,7 @@
                     finalQuestion += " (Lütfen test sorularını kesinlikle A, B, C, D, E dahil olmak üzere 5 şıklı formatta hazırla ve en sonuna Cevap Anahtarı ekle)";
                 }
 
-                const response = await fetch('http://localhost:3000/ask-cedric-chen-voice', { 
+                const response = await fetch('/ask-cedric-chen-voice', { 
                     method: 'POST', 
                     headers: {'Content-Type': 'application/json'}, 
                     body: JSON.stringify({ question: finalQuestion, sessionId: activeChatId }),
@@ -1014,14 +1022,14 @@
             previewZone.style.display = 'flex';
             const formData = new FormData(); formData.append('file', file);
             try {
-                await fetch('http://localhost:3000/upload', { method: 'POST', body: formData });
+                await fetch('/upload', { method: 'POST', body: formData });
                 document.getElementById('file-details').innerText = `📂 ${file.name} (Öğretildi)`;
             } catch (error) { document.getElementById('file-details').innerText = `❌ Yükleme başarısız.`; }
         }
         function clearAttachedFile() { document.getElementById('file-input').value = ''; document.getElementById('file-preview-zone').style.display = 'none'; }
         async function clearServerHistory() {
             if(confirm("Cedric'in tüm hafızasını sıfırlamak istediğine emin misin?")) {
-                await fetch('http://localhost:3000/clear-history', { method: 'POST' });
+                await fetch('/clear-history', { method: 'POST' });
                 alert("Tüm hafıza sıfırlandı."); activeChatId = null; startNewChat();
             }
         }
