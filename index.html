@@ -301,7 +301,6 @@
         }
         .quiz-result-table tr:last-child td { border-bottom: none; }
         
-        /* 🎯 KUSURSUZ ŞEKİLDE ORTALANMIŞ TABLO YAZISI PANELİ */
         .quiz-result-placeholder {
             display: block !important;
             text-align: center !important;
@@ -486,7 +485,6 @@
         window.addEventListener('DOMContentLoaded', () => {
             loadChatRooms();
             
-            // Mevcut olay dinleyicisi
             document.getElementById('question').addEventListener('keydown', function(event) {
                 if (event.key === 'Enter') {
                     event.preventDefault();
@@ -494,7 +492,6 @@
                 }
             });
 
-            // 🟢 CSP İhlalini Kesen Statik Olay Dinleyicileri
             document.body.addEventListener('contextmenu', e => e.preventDefault());
             document.getElementById('new-chat-btn').addEventListener('click', startNewChat);
             document.getElementById('clear-file-btn').addEventListener('click', clearAttachedFile);
@@ -505,7 +502,6 @@
             document.getElementById('voice-btn').addEventListener('click', togglePureVoiceMode);
             document.getElementById('clear-history-btn').addEventListener('click', clearServerHistory);
 
-            // 🟢 Dinamik Üretilen İçerik İçin Olay Delegasyonu (Event Delegation)
             document.getElementById('chat-stream').addEventListener('click', function(e) {
                 const copyBtn = e.target.closest('.copy-code-btn');
                 if (copyBtn) {
@@ -915,7 +911,7 @@
 
             if (isZehraThreat || /(sinir|aptal|saçma|kızgın|nefret|bıktım|off|yeter|kötü|çıldır)/.test(lowerText)) applySphereEmotion('sinirli');
             else if (/(utan|çekin|kızar|iltifat|mahcup|tatlı|aşk|seviyorum|şapşal)/.test(lowerText)) applySphereEmotion('utangac');
-            else if (/(şaşır|şok|inanılmaz|oha|yok artık|ciddi|gerçekten|vay|nasıl yani|şaka|hadi canım)/.test(lowerText)) applySphereEmotion('sasirmis');
+            else if (/(şaşır|shok|inanılmaz|oha|yok artık|ciddi|gerçekten|vay|nasıl yani|şaka|hadi canım)/.test(lowerText)) applySphereEmotion('sasirmis');
             else if (/(mutlu|harika|süper|teşekkür|gül|sevin|iyi|güzel|mükemmel)/.test(lowerText)) applySphereEmotion('mutlu');
             else applySphereEmotion('notr');
 
