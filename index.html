@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; script-src-attr 'unsafe-inline';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: gap: https://ssl.gstatic.com 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; media-src *; img-src 'self' data: content:;">
+    <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon"> 
     <title>Cedric-Chen | Pure Voice Mode</title>
     <style>
         @property --eye-x { syntax: '<number>'; inherits: true; initial-value: 1; }
@@ -493,7 +494,7 @@
                 }
             });
 
-            // 🟢 CSP İhlalini Kesen Yeni Statik Olay Dinleyicileri
+            // 🟢 CSP İhlalini Kesen Statik Olay Dinleyicileri
             document.body.addEventListener('contextmenu', e => e.preventDefault());
             document.getElementById('new-chat-btn').addEventListener('click', startNewChat);
             document.getElementById('clear-file-btn').addEventListener('click', clearAttachedFile);
