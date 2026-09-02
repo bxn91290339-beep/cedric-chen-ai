@@ -39,6 +39,11 @@ app.use((req, res, next) => {
 // 🌐 Orijinal statik dosya sunumun
 app.use(express.static(__dirname));
 
+// 🛠️ KESİN ÇÖZÜM: Ana dizine girildiğinde doğrudan index.html dosyasını çalıştırır
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 // ⚡ GROQ API BİLGİLERİ
 const GROQ_API_KEY = "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";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
