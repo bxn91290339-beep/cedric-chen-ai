@@ -21,14 +21,12 @@ import { OllamaEmbeddings } from "@langchain/ollama";
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 
-// 🛡️ Helmet CSP hatasını önlemek için içerik güvenlik politikası devre dışı bırakıldı
 app.use(helmet({
     contentSecurityPolicy: false,
 }));
 app.use(cors());
 app.use(express.json());
 
-// 🛡️ GÜVENLİK YAMASI: Klasör yapını bozmadan sadece hassas dosyaları erişime kapatır.
 app.use((req, res, next) => {
     if (req.path.includes('server.js') || req.path.includes('chat_history.json')) {
         return res.status(403).send("Erişim yasak.");
@@ -36,19 +34,15 @@ app.use((req, res, next) => {
     next();
 });
 
-// 🌐 Orijinal statik dosya sunumun
 app.use(express.static(__dirname));
 
-// 🛠️ KESİN ÇÖZÜM: Ana dizine girildiğinde doğrudan index.html dosyasını çalıştırır
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// ⚡ GROQ API BİLGİLERİ
 const GROQ_API_KEY = "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";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
-// --- 🧠 ÇOKLU ODA DESTEKLİ AKILLI HAFIZA YAPISI ---
 let chatSessions = {}; 
 let activeSessionId = null;
 
@@ -56,7 +50,6 @@ let vectorStore = null;
 const HISTORY_FILE = 'chat_history.json';
 const embeddings = new OllamaEmbeddings({ model: "nomic-embed-text" }); 
 
-// 🎭 KAPSAMLI DUYGU ANALİZİ KELİMELERİ
 const emotionKeywords = {
     sinirli: ["sinir", "aptal", "saçma", "kızgın", "nefret", "bıktım", "off", "yeter", "hata", "bozuk", "lanet", "kötü", "çıldır"],
     mutlu: ["mutlu", "harika", "süper", "teşekkür", "gül", "sevin", "iyi", "güzel", "mükemmel", "harikulade", "şahane"],
@@ -75,7 +68,6 @@ function checkMood(text) {
     return 'notr';
 }
 
-// 🎯 IŞIK HIZI TRAFİK POLİSİ
 const webSearchKeywords = [
     "hava durumu", "kpss", "altın", "çeyrek", "dolar", "euro", "döviz", "fiyat", "kaç tl", 
     "güncel", "haber", "kimdir", "nedir", "vizyon", "borsa", "sınav ücret", "kaç para", 
@@ -115,7 +107,6 @@ if (fs.existsSync(HISTORY_FILE)) {
     try {
         const data = fs.readFileSync(HISTORY_FILE, 'utf8');
         if (data.includes("uploadedfilecontext") || data.includes("MÜHÜRLÜ EMİRLER") || data.includes("Sistem,")) {
-            console.log("Eski hatalı robotik hafıza tespit edildi. Sistem dosyayı otomatik temizliyor...");
             fs.unlinkSync(HISTORY_FILE);
             chatSessions = {};
             ensureDefaultSession();
@@ -133,10 +124,8 @@ if (fs.existsSync(HISTORY_FILE)) {
             } else {
                 ensureDefaultSession();
             }
-            console.log("Cedric-Chen'in çoklu oda destekli akıllı hafızası başarıyla yüklendi.");
         }
     } catch (e) { 
-        console.error("Geçmiş dosyası kontrol edilirken hata:", e.message); 
         ensureDefaultSession();
     }
 } else {
@@ -151,12 +140,10 @@ function saveChatHistory() {
     fs.writeFileSync(HISTORY_FILE, JSON.stringify(dataToSave, null, 2));
 }
 
-// ⚡ GROQ İLE HIZLANDIRILMIŞ HAFIZA ÖZETLEME
 async function maintainSmartMemory(sessionId) {
     const session = chatSessions[sessionId];
     if (!session || session.history.length < 10) return;
 
-    console.log(`🧠 Bilinçaltı Hafıza Motoru [${sessionId}]: Eski konuşmalar özet havuzuna aktarılıyor...`);
     const messagesToSummarize = session.history.slice(0, 4); 
     session.history = session.history.slice(4); 
 
@@ -180,12 +167,9 @@ async function maintainSmartMemory(sessionId) {
 
         if (response.data?.choices?.[0]?.message?.content) {
             session.summary = response.data.choices[0].message.content.trim();
-            console.log(`🧠 Yeni Bilinçaltı Hafızası Mühürlendi [${sessionId}]: "${session.summary}"`);
             saveChatHistory();
         }
-    } catch (e) {
-        console.error("❌ Hafıza özetleme esnasında Groq hatası:", e.message);
-    }
+    } catch (e) {}
 }
 
 const cedricTools = [
@@ -231,14 +215,11 @@ const cedricTools = [
     }
 ];
 
-// 🚀 PUPPETEER OPTİMİZASYONU VE GÜVENLİ KAPATMA
 let globalBrowser = null;
 async function getGeneralData(query) {
     let page;
     try {
         const tazeSorgu = `${query}`;
-        console.log(`🔍 Araç Tetiklendi (Puppeteer): Canlı bilgi ve Linkler aranıyor -> "${tazeSorgu}"`);
-        
         if (!globalBrowser) {
             globalBrowser = await puppeteer.launch({ 
                 headless: true, 
@@ -279,15 +260,12 @@ async function getGeneralData(query) {
 
 async function getFinanceData(query) {
     try {
-        console.log(`🔍 Araç Tetiklendi (Finance API): Altın fiyatları çekiliyor...`);
         const res = await axios.get('https://api.genelpara.com/embed/altin.json', { timeout: 3000 });
         if (res.data && res.data.GA) {
             const gramAltin = parseFloat(res.data.GA.satis).toFixed(0);
             return `Canlı piyasa verilerine göre şu anda 1 gram altın satış fiyatı tam olarak ${gramAltin} TL değerindedir.`;
         }
-    } catch (e) {
-        console.warn(`⚠️ Finans API'si gecikti, yedek Puppeteer hattına geçiliyor...`);
-    }
+    } catch (e) {}
     const staticFallback = getStaticFallback(query);
     if (staticFallback) return staticFallback;
     return await getGeneralData(query);
@@ -301,11 +279,9 @@ function getCurrentTime() {
 
 async function getWeatherData(city) {
     try {
-        console.log(`🔍 Araç Tetiklendi (Weather API): ${city} hava durumu çekiliyor...`);
         const response = await axios.get(`https://wttr.in/${encodeURIComponent(city)}?format=%t+%C`, { timeout: 4000 });
         return `SİSTEM BİLGİSİ: ${city} için anlık hava durumu: ${response.data}. Bu bilgiyi kullanarak doğal bir dille kullanıcıya cevap ver.`;
     } catch (e) {
-        console.warn(`⚠️ Hava durumu API gecikti, Puppeteer web aramasına düşülüyor...`);
         return await getGeneralData(`${city} hava durumu`);
     }
 }
@@ -400,7 +376,6 @@ app.post('/upload', upload.single('file'), async (req, res) => {
     } catch (e) { res.status(500).send("Dosya işleme hatası."); }
 });
 
-// --- 🔴 SES / AKIŞ ENDPOINT'İ ---
 app.post('/ask-cedric-chen-voice', async (req, res) => {
     const { question, sessionId } = req.body; 
     if (!question) return res.status(400).send({ error: "Soru metni boş olamaz." });
@@ -433,7 +408,7 @@ KESİN KULLANMAN GEREKEN TARZ / CÜMLELER: "Kes lan ağzına vururum!", "Kendine
         try {
             const results = await vectorStore.similaritySearch(question, 3);
             fileContext = results.map(doc => doc.pageContent).join('\n');
-        } catch (e) { console.log("Dosya arama hatası."); }
+        } catch (e) {}
     }
 
     let emotionPrompt = "Her zamanki gibi samimi, sıcak ve neşeli ol.";
@@ -469,8 +444,6 @@ KESİN KULLANMAN GEREKEN TARZ / CÜMLELER: "Kes lan ağzına vururum!", "Kendine
 
     try {
         if (!isSimpleGreeting && requiresWebSearch) {
-            console.log(`🎯 Niyet Analizi Yapılıyor [Oda: ${activeSessionId}]...`);
-            
             const initialResponse = await axios.post(GROQ_URL, {
                 model: "llama-3.1-70b-versatile",
                 messages: messages,
@@ -516,7 +489,6 @@ KESİN KULLANMAN GEREKEN TARZ / CÜMLELER: "Kes lan ağzına vururum!", "Kendine
             });
         }
 
-        console.log(`🌊 Akış musluğu açıldı (Groq) [Oda: ${activeSessionId}]...`);
         const streamResponse = await axios.post(GROQ_URL, {
             model: "llama-3.1-70b-versatile",
             messages: messages,
@@ -540,8 +512,6 @@ KESİN KULLANMAN GEREKEN TARZ / CÜMLELER: "Kes lan ağzına vururum!", "Kendine
             if (!line.trim()) return;
             
             if (line.trim() === 'data: [DONE]') {
-                console.log(`Cedric Söylüyor: ${fullAnswer.trim()}`);
-                
                 chatSessions[activeSessionId].history.push(
                     { role: "User", content: question }, 
                     { role: "Cedric", content: fullAnswer.trim() }
@@ -564,14 +534,11 @@ KESİN KULLANMAN GEREKEN TARZ / CÜMLELER: "Kes lan ağzına vururum!", "Kendine
                         
                         res.write(`data: ${JSON.stringify({ text: content, emotion: detectedEmotion })}\n\n`);
                     }
-                } catch (e) {
-                    // Parçalı stream verilerini güvenle atla
-                }
+                } catch (e) {}
             }
         });
 
         rl.on('error', (err) => {
-            console.error("Stream okuma hatası:", err.message);
             if (!res.headersSent) {
                 res.write(`data: ${JSON.stringify({ error: "Akış esnasında veri hatası." })}\n\n`);
                 res.end();
@@ -579,7 +546,6 @@ KESİN KULLANMAN GEREKEN TARZ / CÜMLELER: "Kes lan ağzına vururum!", "Kendine
         });
 
     } catch (error) {
-        console.error("Cedric Akış Hatası:", error.response ? error.response.data : error.message);
         if (!res.headersSent) res.status(500).send({ error: "Cedric şu an yanıt üretemiyor." });
     }
 });
@@ -588,13 +554,11 @@ app.use((err, req, res, next) => {
     if (!res.headersSent) res.status(500).send({ error: "Sistem hatası." });
 });
 
-const server = app.listen(3000, () => console.log('🚀 Cedric-Chen GÜNCELLENDİ: Orijinal Yapı Korunarak Groq API Hızı Eklendi!'));
+const server = app.listen(3000, () => console.log('🚀 Cedric-Chen GÜNCELLENDİ: Sunucu http://localhost:3000 adresinde çalışıyor!'));
 
-// 🛑 Zombi tarayıcı süreçlerini önlemek için güvenli kapatma kancası
 process.on('SIGINT', async () => {
     if (globalBrowser) {
         await globalBrowser.close();
-        console.log('Puppeteer tarayıcısı güvenle kapatıldı.');
     }
     server.close(() => {
         process.exit(0);
