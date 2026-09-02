@@ -4,7 +4,8 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "build": "echo \"No build step required\""
   },
   "dependencies": {
     "@langchain/community": "^1.1.29",
@@ -14,7 +15,9 @@
     "@langchain/textsplitters": "^1.0.1",
     "axios": "^1.7.9",
     "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
     "express": "^4.21.2",
+    "groq-sdk": "^1.6.0",
     "helmet": "^8.0.0",
     "langchain": "^0.3.0",
     "mammoth": "^1.9.0",
@@ -23,9 +26,11 @@
     "pdf-parse": "^1.1.1",
     "puppeteer": "^25.3.0"
   },
-  "description": "",
-  "devDependencies": {},
-  "keywords": [],
-  "author": "",
+  "engines": {
+    "node": ">=18.x"
+  },
+  "description": "Cedric-Chen AI Assistant",
+  "keywords": ["ai", "assistant", "express", "web"],
+  "author": "Eren",
   "license": "ISC"
 }
