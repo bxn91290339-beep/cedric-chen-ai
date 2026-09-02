@@ -21,7 +21,10 @@ import { OllamaEmbeddings } from "@langchain/ollama";
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 
-app.use(helmet());
+// 🛡️ Helmet CSP hatasını önlemek için içerik güvenlik politikası devre dışı bırakıldı
+app.use(helmet({
+    contentSecurityPolicy: false,
+}));
 app.use(cors());
 app.use(express.json());
 
@@ -35,11 +38,6 @@ app.use((req, res, next) => {
 
 // 🌐 Orijinal statik dosya sunumun
 app.use(express.static(__dirname));
-
-// 🟢 VERCEL "Cannot GET /" HATASI İÇİN KESİN ÇÖZÜM
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
 
 // ⚡ GROQ API BİLGİLERİ
 const GROQ_API_KEY = "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";
@@ -165,7 +163,7 @@ async function maintainSmartMemory(sessionId) {
             messages: [
                 {
                     role: "system",
-                    content: "Sen bir hafıza sıkıştırma mimarisisin. Eren ve Cedric-Chen arasındaki konuşma kesitini, varsa eski özet verisiyle birleştirip tek bir güncel özet haline getireceksin. Eren'in projelerini, hayatındaki önemli kişileri (Örn: Zehra) ve özel kararları asla unutmama ödevin var. Çok uzatmadan, doğrudan can alıcı detayları barındıran temiz bir özet metni döndür."
+                    content: "Sen bir hafıza sıkıştırma mimarisisin. Eren-Cedric arasındaki konuşma kesitini, varsa eski özet verisiyle birleştirip tek bir güncel özet haline getireceksin. Eren'in projelerini, hayatındaki önemli kişileri (Örn: Zehra) ve özel kararları asla unutmama ödevin var. Çok uzatmadan, doğrudan can alıcı detayları barındıran temiz bir özet metni döndür."
                 },
                 {
                     role: "user",
