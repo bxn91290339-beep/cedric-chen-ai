@@ -164,7 +164,7 @@ async function maintainSmartMemory(sessionId) {
 
     try {
         const response = await axios.post(GROQ_URL, {
-            model: "llama-3.1-8b-instant", // Güncel ve aktif hafif model
+            model: "llama-3.1-8b-instant",
             messages: [
                 {
                     role: "system",
@@ -472,7 +472,7 @@ KESİN KULLANMAN GEREKEN TARZ / CÜMLELER: "Kes lan ağzına vururum!", "Kendine
             console.log(`🎯 Niyet Analizi Yapılıyor [Oda: ${activeSessionId}]...`);
             
             const initialResponse = await axios.post(GROQ_URL, {
-                model: "llama-3.3-70b-versatile", // Güncel ve aktif güçlü model
+                model: "llama-3.3-70b-versatile",
                 messages: messages,
                 tools: cedricTools,
                 stream: false,
@@ -518,7 +518,7 @@ KESİN KULLANMAN GEREKEN TARZ / CÜMLELER: "Kes lan ağzına vururum!", "Kendine
 
         console.log(`🌊 Akış musluğu açıldı (Groq) [Oda: ${activeSessionId}]...`);
         const streamResponse = await axios.post(GROQ_URL, {
-            model: "llama-3.3-70b-versatile", // Güncel ve aktif güçlü model
+            model: "llama-3.3-70b-versatile",
             messages: messages,
             stream: true,
             temperature: 0.5, 
