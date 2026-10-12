@@ -45,7 +45,7 @@ app.get('/', (req, res) => {
 });
 
 // ⚡ GROQ API BİLGİLERİ
-const GROQ_API_KEY = "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";
+const GROQ_API_KEY = "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";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 // --- 🧠 ÇOKLU ODA DESTEKLİ AKILLI HAFIZA YAPISI ---
