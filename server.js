@@ -61,7 +61,7 @@ const emotionKeywords = {
     sinirli: ["sinir", "aptal", "saçma", "kızgın", "nefret", "bıktım", "off", "yeter", "hata", "bozuk", "lanet", "kötü", "çıldır"],
     mutlu: ["mutlu", "harika", "süper", "teşekkür", "gül", "sevin", "iyi", "güzel", "mükemmel", "harikulade", "şahane"],
     utangac: ["utan", "çekin", "kızar", "iltifat", "mahcup", "tatlı", "aşk", "seviyorum", "utandı", "şapşal"],
-    sasirmis: ["şaşır", "şok", "inanılmaz", "oha", "yok artık", "ciddi", "gerçekten", "vay", "nasıl yani", "şaka", "hadi canım"]
+    sasirmis: ["şaşır", "şok", "inanılmaz", "oha", "yok artık", "ciddi", "gerçekten", "vay", "nasıl yani", "shaka", "hadi canım"]
 };
 
 function checkMood(text) {
@@ -160,7 +160,7 @@ async function maintainSmartMemory(sessionId) {
     const messagesToSummarize = session.history.slice(0, 4); 
     session.history = session.history.slice(4); 
 
-    const contextText = messagesToSummarize.map(m => `${m.role === 'User' ? 'Eren' : 'Cedric-Chen'}: ${m.content}`).join("\n");
+    const contextText = messagesToSummarize.map(m => `${m.role === 'User' ? 'Eren' : 'Cedric-Chen'}:${m.content}`).join("\n");
 
     try {
         const response = await axios.post(GROQ_URL, {
@@ -579,7 +579,19 @@ KESİN KULLANMAN GEREKEN TARZ / CÜMLELER: "Kes lan ağzına vururum!", "Kendine
         });
 
     } catch (error) {
-        console.error("Cedric Akış Hatası:", error.response ? error.response.data : error.message);
+        // 🛡️ GÜVENLİ HATA YAKALAMA (BrotliDecompress çökmesini önler, hatayı temiz yazar)
+        if (error.response && error.response.data && typeof error.response.data.on === 'function') {
+            let errorData = '';
+            error.response.data.on('data', (chunk) => {
+                errorData += chunk;
+            });
+            error.response.data.on('end', () => {
+                console.error("🔥 GROQ API AKIŞ HATASI:", errorData);
+            });
+        } else {
+            console.error("Cedric Akış Hatası:", error.message);
+        }
+
         if (!res.headersSent) res.status(500).send({ error: "Cedric şu an yanıt üretemiyor." });
     }
 });
