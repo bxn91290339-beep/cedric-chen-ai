@@ -1067,10 +1067,23 @@
             } catch (error) { document.getElementById('file-details').innerText = `❌ Yükleme başarısız.`; }
         }
         function clearAttachedFile() { document.getElementById('file-input').value = ''; document.getElementById('file-preview-zone').style.display = 'none'; }
+        
+        // 🧹 GÜNCELLENDİ: Hafızayı sil butonuna basıldığında sağdaki sohbet listesini anında tamamen temizler ve sıfırlar
         async function clearServerHistory() {
-            if(confirm("Cedric'in tüm hafızasını sıfırlamak istediğine emin misin?")) {
-                await fetch('/clear-history', { method: 'POST' });
-                alert("Tüm hafıza sıfırlandı."); activeChatId = null; startNewChat();
+            if(confirm("Cedric'in tüm hafızasını ve sohbet odalarını silmek istediğine emin misin?")) {
+                try {
+                    const response = await fetch('/clear-history', { method: 'POST' });
+                    if (response.ok) {
+                        activeChatId = null;
+                        await loadChatRooms(); // Sağdaki listeyi anında yenileyip boşaltır
+                        const chatStream = document.getElementById('chat-stream');
+                        chatStream.innerHTML = '<div class="msg ai"><span class="res-text">Cedric-Chen Hazır. Ses moduna geçmek için mikrofona dokun...</span></div>';
+                        applySphereEmotion('notr');
+                        alert("Tüm hafıza ve sohbet odaları sıfırlandı.");
+                    }
+                } catch (e) {
+                    alert("Sıfırlama sırasında bir hata oluştu.");
+                }
             }
         }
     </script>
