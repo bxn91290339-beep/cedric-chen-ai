@@ -349,11 +349,13 @@ app.get('/chats/:id', (req, res) => {
     if (chatSessions[id]) { res.json(chatSessions[id]); } else { res.status(404).send({ error: "Sohbet geçmişi bulunamadı." }); }
 });
 
+// 🧹 GÜNCELLENDİ: Tüm sohbet odalarını ve hafızayı tamamen temizler
 app.post('/clear-history', (req, res) => {
-    ensureDefaultSession();
-    chatSessions[activeSessionId] = { history: [], summary: "" };
-    saveChatHistory(); vectorStore = null;
-    res.send({ message: "Mevcut odanın hafızası temizlendi." });
+    chatSessions = {}; 
+    ensureDefaultSession(); 
+    saveChatHistory(); 
+    vectorStore = null;
+    res.send({ message: "Tüm hafıza ve sohbet odaları temizlendi." });
 });
 
 app.post('/upload', upload.single('file'), async (req, res) => {
