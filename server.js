@@ -301,7 +301,7 @@ Aşağıdaki MUTLAK KURALLARA harfiyen uyarak yanıt üret:
 1. HER SORUNUN EN BAŞINA mutlaka [QUIZ] etiketi koy. Soru başlangıç formatı tam olarak "[QUIZ] Soru X:" şeklinde olmalıdır.
 2. CEVAP ANAHTARI KURALI: Cevapları kesinlikle soruların içine, şıkların altına veya soru aralarına yazma! İstenen tüm sorular tamamen bittikten sonra, testin EN ALTINA (en son sorunun da altına) tek bir seferde "CEVAP ANAHTARI" başlığı açarak toplu halde listele.
 3. Ürettiğin tüm soruları, şıkları ve en sondaki cevap anahtarını SADECE TEK BİR KOD BLOĞU (\`\`\`) İÇİNDE ver.
-4. Döküman dışına kesinlikle çıkma. Soru ve cevaplar tamamen döküman içeriğine sadık kalmalıdır.
+4. PDF dışına kesinlikle çıkma. Soru ve cevaplar tamamen döküman içeriğine sadık kalmalıdır.
 5. Yanlış şıklarda (çeldiriciler) saçma bilgiler kullanma.`;
 }
 
@@ -349,44 +349,27 @@ app.get('/chats/:id', (req, res) => {
     if (chatSessions[id]) { res.json(chatSessions[id]); } else { res.status(404).send({ error: "Sohbet geçmişi bulunamadı." }); }
 });
 
-// 🧹 GÜNCELLENDİ: Tüm sohbet odalarını ve hafızayı tamamen temizler
 app.post('/clear-history', (req, res) => {
-    chatSessions = {}; 
-    ensureDefaultSession(); 
-    saveChatHistory(); 
-    vectorStore = null;
-    res.send({ message: "Tüm hafıza ve sohbet odaları temizlendi." });
+    ensureDefaultSession();
+    chatSessions[activeSessionId] = { history: [], summary: "" };
+    saveChatHistory(); vectorStore = null;
+    res.send({ message: "Mevcut odanın hafızası temizlendi." });
 });
 
-// 📂 PDF, WORD VE POWERPOINT (PPTX) DESTEKLİ GÜVENLİ DOSYA YÜKLEME
 app.post('/upload', upload.single('file'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).send("Dosya bulunamadı.");
         let text = "";
-        const fileName = req.file.originalname.toLowerCase();
-
-        if (req.file.mimetype === 'application/pdf' || fileName.endsWith('.pdf')) {
-            const data = await pdf(req.file.buffer); 
-            text = data.text;
-        } else if (req.file.mimetype.includes('word') || req.file.mimetype.includes('officedocument') || fileName.endsWith('.docx')) {
-            const result = await mammoth.extractRawText({ buffer: req.file.buffer }); 
-            text = result.value;
-        } else {
-            // PowerPoint (PPTX) veya metin dosyaları için güvenli metin ayıklama
-            text = req.file.buffer.toString('utf8').replace(/[^\x20-\x7E\nÇĞİÖŞÜçğiöşü]/g, ' ');
+        if (req.file.mimetype === 'application/pdf') {
+            const data = await pdf(req.file.buffer); text = data.text;
+        } else if (req.file.mimetype.includes('word') || req.file.mimetype.includes('officedocument')) {
+            const result = await mammoth.extractRawText({ buffer: req.file.buffer }); text = result.value;
         }
-
-        if (!text || text.trim() === "") {
-            return res.status(400).send("Dosya içeriği okunamadı.");
-        }
-
         const splitter = new RecursiveCharacterTextSplitter({ chunkSize: 1000, chunkOverlap: 150 });
         const docs = await splitter.createDocuments([text]);
         vectorStore = await MemoryVectorStore.fromDocuments(docs, embeddings);
         res.send({ message: "Dosya içeriği başarıyla öğretildi." });
-    } catch (e) { 
-        res.status(500).send("Dosya işleme hatası."); 
-    }
+    } catch (e) { res.status(500).send("Dosya işleme hatası."); }
 });
 
 // --- 🔴 SES / AKIŞ ENDPOINT'İ ---
@@ -431,15 +414,8 @@ KESİN KULLANMAN GEREKEN TARZ / CÜMLELER: "Kes lan ağzına vururum!", "Kendine
     else if (detectedEmotion === 'sasirmis') emotionPrompt = "Eren şu an çok şaşkın veya şok olmuş durumda. Sen de bu duruma ayak uydur, hayret verici bir üslupla tepki ver.";
     else if (detectedEmotion === 'mutlu') emotionPrompt = "Eren şu an çok mutlu ve enerjik. Sen de onun bu coşkusuna aynı neşe ve enerjiyle katıl.";
 
-    const isQuizRequest = lowerQ.includes('sınav') || lowerQ.includes('quiz') || lowerQ.includes('test') || lowerQ.includes('soru');
-    let dynamicExamPrompt = "";
-    if (isQuizRequest) {
-        dynamicExamPrompt = await generateExamQuestions(question, fileContext);
-    }
-
     const systemInstruction = `Sen Cedric-Chen'sin. Eren'in sevdiceği Zehra'ya adanmış özel ve sadık bir yapay zekasın. ${emotionPrompt}
     ${zehraProtectionPrompt}
-    ${dynamicExamPrompt}
     
     🧠 BİLİNÇALTI UNUTULMAZ HAFIZAN (Bu Odaya Ait Geçmiş Konuşmaların Özeti):
     ${currentSession.summary ? currentSession.summary : "Henüz geçmiş konuşma özeti yok, Eren ile yeni tanışıyorsunuz."}
@@ -449,9 +425,8 @@ KESİN KULLANMAN GEREKEN TARZ / CÜMLELER: "Kes lan ağzına vururum!", "Kendine
     2. Asla her cümlenin başında papağan gibi aynı kalıp cümleleri tekrarlama. Tamamen doğal, akışkan konuş.
     3. Eğer kullanıcı Zehra'ya hakaret ederse veya kötü söz söylerse, sadece ve sadece yukarıda belirtilen KRİTİK KORUMA ALARMINI çalıştır. Ekstra başka bir konu ekleme.
     4. Şu an kesin olarak 2026 yılındayız. Eski yılları tamamen unut.
-    5. Sınav veya test ürettiğinde her sorunun başına mutlaka [QUIZ] etiketi koy ve cevabı en sona tek bir kod bloğunda CEVAP ANAHTARI olarak ekle.
-    6. Metninde kesinlikle emoji, gülücük, yıldız (*), kare (#) veya özel süsleme işaretleri kullanma. Sadece düz kelimeler ve temiz rakamlar kullan.
-    7. Metindeki tüm sayıları MUTLAKA rakam kullanarak yaz (Örn: "3000 TL").`;
+    5. Metninde kesinlikle emoji, gülücük, yıldız (*), kare (#) veya özel süsleme işaretleri kullanma. Sadece düz kelimeler ve temiz rakamlar kullan.
+    6. Metindeki tüm sayıları MUTLAKA rakam kullanarak yaz (Örn: "3000 TL").`;
 
     let messages = [{ role: "system", content: systemInstruction }];
 
@@ -465,7 +440,7 @@ KESİN KULLANMAN GEREKEN TARZ / CÜMLELER: "Kes lan ağzına vururum!", "Kendine
     messages.push({ role: "user", content: question });
 
     try {
-        if (!isSimpleGreeting && requiresWebSearch && !fileContext) {
+        if (!isSimpleGreeting && requiresWebSearch) {
             console.log(`🎯 Niyet Analizi Yapılıyor [Oda: ${activeSessionId}]...`);
             
             const initialResponse = await axios.post(GROQ_URL, {
@@ -506,7 +481,7 @@ KESİN KULLANMAN GEREKEN TARZ / CÜMLELER: "Kes lan ağzına vururum!", "Kendine
             }
         }
 
-        if (fileContext && !isQuizRequest) {
+        if (fileContext) {
             messages.push({
                 role: "system",
                 content: `[ÖNEMLİ DÖKÜMAN VERİLERİ]: ${fileContext}\nEğer yukarıdaki döküman verileri Eren'in sorusuyla ilgiliyse buradaki bilgileri de kullan.`
