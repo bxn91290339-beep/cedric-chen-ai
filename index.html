@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: gap: https://ssl.gstatic.com 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; media-src *; img-src 'self' data: content:;">
     <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon"> 
     <title>Cedric-Chen | Pure Voice Mode</title>
@@ -28,7 +28,7 @@
         body.shy-mode { --accent: #f472b6; --glow: rgba(244, 114, 182, 0.8); --eye-x: 0.75; --eye-y: 0.75; }
         body.surprised-mode { --accent: #eab308; --glow: rgba(234, 179, 8, 0.8); --eye-x: 1.3; --eye-y: 1.3; }
 
-        body { margin: 0; background: var(--bg); color: white; font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; display: flex; transition: background 0.5s; }
+        body { margin: 0; background: var(--bg); color: white; font-family: 'Inter', sans-serif; height: 100vh; height: 100dvh; overflow: hidden; display: flex; transition: background 0.5s; }
 
         #space-canvas { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -4; }
         .the-sphere-matrix {
@@ -160,9 +160,9 @@
         body.surprised-mode #mouth { width: 50px; height: 50px; border-radius: 50%; }
 
         /* ANA EKRAN VE YAN PANEL */
-        #main-chat-area { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: 40px 5vw; z-index: 1; position: relative; transition: opacity 0.5s ease; }
+        #main-chat-area { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: 40px 5vw; z-index: 1; position: relative; transition: opacity 0.5s ease; box-sizing: border-box; }
         
-        #sidebar-history { flex: 0 0 280px; width: 280px; padding: 40px 20px; display: flex; flex-direction: column; gap: 15px; border-left: 1px solid rgba(255,255,255,0.05); background: linear-gradient(90deg, transparent, rgba(0,0,0,0.5)); z-index: 1; overflow-y: auto; scrollbar-width: none; transition: transform 0.5s ease; box-sizing: border-box; }
+        #sidebar-history { flex: 0 0 280px; width: 280px; padding: 40px 20px; display: flex; flex-direction: column; gap: 15px; border-left: 1px solid rgba(255,255,255,0.05); background: linear-gradient(90deg, transparent, rgba(0,0,0,0.5)); z-index: 10; overflow-y: auto; scrollbar-width: none; transition: transform 0.3s ease; box-sizing: border-box; }
         #chat-rooms-list { display: flex; flex-direction: column; gap: 10px; flex-grow: 1; overflow-y: auto; scrollbar-width: none; margin-top: 10px; }
         
         .chat-room-item { 
@@ -171,8 +171,11 @@
         .chat-room-item:hover { background: rgba(56, 189, 248, 0.08); border-color: rgba(56, 189, 248, 0.3); color: white; box-shadow: 0 0 10px rgba(56, 189, 248, 0.15); }
         .chat-room-item.active { background: rgba(56, 189, 248, 0.15); border-color: var(--accent); color: white; font-weight: bold; box-shadow: 0 0 15px var(--glow); }
 
-        #new-chat-btn { position: absolute; top: 40px; left: 5vw; background: transparent; border: 1px solid rgba(255,255,255,0.15); color: white; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-size: 0.9em; transition: 0.3s; }
+        #new-chat-btn { position: absolute; top: 40px; left: 5vw; background: transparent; border: 1px solid rgba(255,255,255,0.15); color: white; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-size: 0.9em; transition: 0.3s; z-index: 5; }
         #new-chat-btn:hover { border-color: var(--accent); box-shadow: 0 0 15px var(--glow); color: var(--accent); }
+
+        #history-toggle-btn { display: none; position: absolute; top: 40px; right: 5vw; background: transparent; border: 1px solid rgba(255,255,255,0.15); color: white; padding: 10px 16px; border-radius: 20px; cursor: pointer; font-size: 0.9em; transition: 0.3s; z-index: 15; }
+        #history-toggle-btn:hover { border-color: var(--accent); box-shadow: 0 0 15px var(--glow); color: var(--accent); }
 
         #chat-stream { flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; padding-bottom: 20px; margin-top: 80px; scrollbar-width: none; }
         
@@ -333,10 +336,10 @@
         #file-preview-zone { display: none; align-items: center; gap: 10px; background: rgba(56, 189, 248, 0.1); border: 1px dashed var(--accent); padding: 8px 15px; border-radius: 10px; width: fit-content; font-size: 0.9em; color: var(--accent); }
         #file-preview-zone button { background: transparent; border: none; color: #ef4444; cursor: pointer; }
         .input-zone { display: flex; gap: 15px; align-items: center; }
-        .action-btn { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); color: white; width: 45px; height: 45px; border-radius: 50%; font-size: 1.3em; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.3s; }
+        .action-btn { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); color: white; width: 45px; height: 45px; border-radius: 50%; font-size: 1.3em; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.3s; flex-shrink: 0; }
         .action-btn:hover { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 15px var(--glow); }
         input[type="text"] { flex-grow: 1; background: transparent; border: none; padding: 15px 0; color: white; font-size: 1.2em; outline: none; }
-        .submit-text-btn { background: transparent; border: none; color: var(--accent); font-size: 1.1em; font-weight: bold; cursor: pointer; text-shadow: 0 0 15px var(--glow); }
+        .submit-text-btn { background: transparent; border: none; color: var(--accent); font-size: 1.1em; font-weight: bold; cursor: pointer; text-shadow: 0 0 15px var(--glow); flex-shrink: 0; }
 
         /* 🔴 SOHBETİ DURDURMA BUTONU STİLLERİ */
         #stop-chat-btn {
@@ -352,6 +355,7 @@
             transition: all 0.3s ease;
             box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
             font-family: 'Inter', sans-serif;
+            flex-shrink: 0;
         }
         #stop-chat-btn:hover {
             background: #ef4444;
@@ -360,29 +364,32 @@
             transform: scale(1.05);
         }
 
-        body.pure-voice-active #chat-stream, body.pure-voice-active input[type="text"], body.pure-voice-active .submit-text-btn, body.pure-voice-active #new-chat-btn, body.pure-voice-active .action-btn:not(#voice-btn), body.pure-voice-active #file-preview-zone, body.pure-voice-active #stop-chat-btn { opacity: 0 !important; pointer-events: none !important; }
+        body.pure-voice-active #chat-stream, body.pure-voice-active input[type="text"], body.pure-voice-active .submit-text-btn, body.pure-voice-active #new-chat-btn, body.pure-voice-active #history-toggle-btn, body.pure-voice-active .action-btn:not(#voice-btn), body.pure-voice-active #file-preview-zone, body.pure-voice-active #stop-chat-btn { opacity: 0 !important; pointer-events: none !important; }
         body.pure-voice-active #sidebar-history { transform: translateX(100%); flex: 0 0 0; width: 0; padding: 0; }
         body.pure-voice-active #main-chat-area { justify-content: center; align-items: center; }
         body.pure-voice-active #voice-btn { width: 90px; height: 90px; font-size: 2.5em; background: #ef4444; border-color: #ef4444; box-shadow: 0 0 40px rgba(239, 68, 68, 0.8); animation: voicePulse 1.5s infinite; position: absolute; bottom: 10%; left: 50%; transform: translateX(-50%); z-index: 100; }
         @keyframes voicePulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 25px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
 
         @media (max-width: 768px) {
-            body { position: relative; }
-            #sidebar-history { position: absolute; right: 0; top: 0; height: 100vh; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(10px); width: 260px; box-shadow: -5px 0 25px rgba(0,0,0,0.8); }
-            #main-chat-area { padding: 20px 4vw; }
-            #sphere-face { width: 100% !important; max-width: 320px !important; height: auto !important; gap: 35px !important; }
+            body { position: relative; height: 100vh; height: 100dvh; }
+            #sidebar-history { position: fixed; right: 0; top: 0; height: 100vh; height: 100dvh; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1); background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(10px); width: 260px; box-shadow: -5px 0 25px rgba(0,0,0,0.8); z-index: 999; }
+            body.sidebar-open #sidebar-history { transform: translateX(0); }
+            #main-chat-area { padding: 15px 4vw; }
+            #sphere-face { width: 100% !important; max-width: 280px !important; height: auto !important; gap: 30px !important; }
             .brows-row, .eyes-row { padding: 0 20px; }
-            .eye { width: 55px !important; height: 25px !important; }
-            .brow { width: 55px !important; height: 5px !important; }
-            #mouth { width: 85px !important; height: 5px !important; }
-            #sphere-face.speaking #mouth { width: 55px !important; height: 25px !important; border-width: 4px !important; }
-            #thinking-text { font-size: 1.1em; margin-top: 15px; }
-            #new-chat-btn { top: 20px; left: 4vw; padding: 8px 16px; font-size: 0.8em; }
-            #chat-stream { margin-top: 65px; gap: 15px; }
-            .msg { font-size: 1.05em; }
-            input[type="text"] { font-size: 1.05em; }
-            .quiz-page-wrapper { padding: 15px; margin: 10px 0; }
-            .quiz-result-table th, .quiz-result-table td { padding: 8px; font-size: 0.85em; }
+            .eye { width: 45px !important; height: 20px !important; }
+            .brow { width: 45px !important; height: 4px !important; }
+            #mouth { width: 75px !important; height: 4px !important; }
+            #sphere-face.speaking #mouth { width: 45px !important; height: 20px !important; border-width: 3px !important; }
+            #thinking-text { font-size: 1.05em; margin-top: 15px; }
+            #new-chat-btn { top: 20px; left: 4vw; padding: 6px 12px; font-size: 0.75em; }
+            #history-toggle-btn { display: block !important; top: 20px; right: 4vw; padding: 6px 12px; font-size: 0.75em; }
+            #chat-stream { margin-top: 60px; gap: 12px; }
+            .msg { font-size: 1em; }
+            input[type="text"] { font-size: 16px !important; } /* iOS otomatik zoom engelleme */
+            .quiz-page-wrapper { padding: 12px; margin: 10px 0; }
+            .quiz-result-table th, .quiz-result-table td { padding: 6px; font-size: 0.8em; }
+            .action-btn { width: 40px; height: 40px; font-size: 1.1em; }
         }
     </style>
 </head>
@@ -413,6 +420,7 @@
 
     <div id="main-chat-area">
         <button id="new-chat-btn">+ Yeni Sohbet</button>
+        <button id="history-toggle-btn">📂 Geçmiş</button>
         <div id="chat-stream">
             <div class="msg ai"><span class="res-text">Cedric-Chen Hazır. Ses moduna geçmek için mikrofona dokun...</span></div>
         </div>
@@ -494,6 +502,9 @@
 
             document.body.addEventListener('contextmenu', e => e.preventDefault());
             document.getElementById('new-chat-btn').addEventListener('click', startNewChat);
+            document.getElementById('history-toggle-btn').addEventListener('click', () => {
+                document.body.classList.toggle('sidebar-open');
+            });
             document.getElementById('clear-file-btn').addEventListener('click', clearAttachedFile);
             document.getElementById('add-file-btn').addEventListener('click', () => document.getElementById('file-input').click());
             document.getElementById('file-input').addEventListener('change', function() { processFile(this); });
@@ -545,7 +556,7 @@
                 let quizBlocksHtml = "";
                 let introText = "";
                 
-                let segments = workingText.split(/(?:^|[\r\n]+)(?:\[QUIZ\]\s*(?:Soru\s*)?|Soru\s*)(\d+)\s*[:\.\-]/i);
+                let segments = workingText.split(/(?:^|[\r\n]+)(?:[QUIZ]\s*(?:Soru\s*)?|Soru\s*)(\d+)\s*[:\.\-]/i);
                 
                 if (segments.length > 1) {
                     introText = segments[0];
@@ -773,7 +784,10 @@
                     const btn = document.createElement('button');
                     btn.className = `chat-room-item ${chat.id === activeChatId ? 'active' : ''}`;
                     btn.innerText = chat.title || "Yeni Sohbet";
-                    btn.onclick = () => selectChat(chat.id, true);
+                    btn.onclick = () => {
+                        selectChat(chat.id, true);
+                        document.body.classList.remove('sidebar-open');
+                    };
                     listContainer.appendChild(btn);
                 });
             } catch (e) {}
@@ -790,7 +804,10 @@
                     const btn = document.createElement('button');
                     btn.className = `chat-room-item ${chat.id === activeChatId ? 'active' : ''}`;
                     btn.innerText = chat.title || "Yeni Sohbet";
-                    btn.onclick = () => selectChat(chat.id, true);
+                    btn.onclick = () => {
+                        selectChat(chat.id, true);
+                        document.body.classList.remove('sidebar-open');
+                    };
                     listContainer.appendChild(btn);
                 });
             } catch (e) {}
@@ -842,6 +859,7 @@
                 const chatStream = document.getElementById('chat-stream');
                 chatStream.innerHTML = '<div class="msg ai"><span class="res-text">Cedric-Chen Hazır. Ses moduna geçmek için mikrofona dokun...</span></div>';
                 applySphereEmotion('notr');
+                document.body.classList.remove('sidebar-open');
                 await refreshRoomListOnly();
             } catch (e) {}
         }
