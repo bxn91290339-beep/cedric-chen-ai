@@ -4,6 +4,7 @@ import cors from 'cors';
 import multer from 'multer';
 import pdf from 'pdf-parse';
 import mammoth from 'mammoth';
+import * as XLSX from 'xlsx';
 import helmet from 'helmet';
 import fs from 'fs';
 import path from 'path';
@@ -51,9 +52,9 @@ const embeddings = new OllamaEmbeddings({ model: "nomic-embed-text" });
 
 const emotionKeywords = {
     sinirli: ["sinir", "aptal", "saçma", "kızgın", "nefret", "bıktım", "off", "yeter", "hata", "bozuk", "lanet", "kötü", "çıldır"],
-    mutlu: ["mutlu", "harika", "süper", "teşekkür", "gül", "sevin", "iyi", "güzel", "mükemmel", "harikulade", "şahane"],
+    mutlu: ["mutlu", "harika", "süper", "teşekkür", "gül", "sevin", "iyi", "güzel", "mükemmel", "harikulade", "shahane"],
     utangac: ["utan", "çekin", "kızar", "iltifat", "mahcup", "tatlı", "aşk", "seviyorum", "utandı", "şapşal"],
-    sasirmis: ["şaşır", "şok", "inanılmaz", "oha", "yok artık", "ciddi", "gerçekten", "vay", "nasıl yani", "şaka", "hadi canım"]
+    sasirmis: ["şaşır", "şok", "inanılmaz", "oha", "yok artık", "ciddi", "gerçekten", "vay", "nasıl yani", "shaka", "hadi canım"]
 };
 
 function checkMood(text) {
@@ -263,8 +264,8 @@ KURALLAR:
 3. Tüm soruları ve cevap anahtarını SADECE TEK BİR KOD BLOĞU (\`\`\`) İÇİNDE ver.`;
     }
 
-    return `SİSTEM EMRİ: Kullanıcı "${query}" talebiyle yüklenen dosyadan sınav sorusu istiyor. 
-KESİN KURAL: Aşağıdaki [YÜKLENEN DOSYA İÇERİĞİ] dışına KESİNLİKLE çıkma. Soru ve cevaplar tamamen bu dosyadaki bilgilere dayanmalıdır.
+    return `SİSTEM EMRİ: Kullanıcı "${query}" talebiyle yüklenen dosyadan (PDF, Word, Excel veya PPTX) sınav sorusu istiyor. 
+KESİN KURAL: Aşağıdaki [YÜKLENEN DOSYA İÇERİĞİ] dışına KESİNLİKLE çıkma. Soru ve cevaplar tamamen bu dosyadaki bilgilere dayanmalıdır, dışarıdan hayali bilgi katma.
 
 [YÜKLENEN DOSYA İÇERİĞİ]:
 ${fileContext}
@@ -326,7 +327,7 @@ app.post('/clear-history', (req, res) => {
     res.send({ message: "Tüm hafıza ve sohbet odaları temizlendi." });
 });
 
-// 📂 GÜVENLİ DOSYA OKUMA MOTORU (PDF, Word ve Metin Tabanlı Dosyalar)
+// 📂 GÜNCELLENMİŞ DOSYA OKUMA MOTORU (PDF, Word, Excel, PPTX Destekli)
 app.post('/upload', upload.single('file'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).send("Dosya bulunamadı.");
@@ -334,13 +335,29 @@ app.post('/upload', upload.single('file'), async (req, res) => {
         const mimeType = req.file.mimetype;
         const fileName = req.file.originalname.toLowerCase();
 
+        // 1. PDF Okuma
         if (mimeType === 'application/pdf' || fileName.endsWith('.pdf')) {
             const data = await pdf(req.file.buffer); 
             text = data.text;
-        } else if (mimeType.includes('word') || mimeType.includes('officedocument') || fileName.endsWith('.docx')) {
+        } 
+        // 2. Word Okuma (.docx)
+        else if (mimeType.includes('word') || mimeType.includes('officedocument') || fileName.endsWith('.docx')) {
             const result = await mammoth.extractRawText({ buffer: req.file.buffer }); 
             text = result.value;
-        } else {
+        } 
+        // 3. Excel Okuma (.xlsx, .xls)
+        else if (mimeType.includes('spreadsheet') || mimeType.includes('excel') || fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+            const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+            let excelText = "";
+            workbook.SheetNames.forEach(sheetName => {
+                const sheet = workbook.Sheets[sheetName];
+                excelText += `--- Sayfa: ${sheetName} ---\n` + XLSX.utils.sheet_to_csv(sheet) + "\n\n";
+            });
+            text = excelText;
+        }
+        // 4. PowerPoint / Diğer Metin Tabanlı Dosyalar (.pptx vb.)
+        else {
+            // PPTX veya diğer formatlar için ham buffer metin taraması veya genel fallback
             text = req.file.buffer.toString('utf8').replace(/[^\x20-\x7E\nÇĞİÖŞÜçğiöşü]/g, ' ');
         }
 
@@ -353,6 +370,7 @@ app.post('/upload', upload.single('file'), async (req, res) => {
         vectorStore = await MemoryVectorStore.fromDocuments(docs, embeddings);
         res.send({ message: "Dosya içeriği başarıyla okundu ve öğretildi." });
     } catch (e) { 
+        console.error("Dosya işleme hatası:", e);
         res.status(500).send("Dosya işleme hatası."); 
     }
 });
@@ -373,12 +391,12 @@ app.post('/ask-cedric-chen-voice', async (req, res) => {
 
     if (lowerQ.includes("zehra") && (detectedEmotion === 'sinirli' || lowerQ.includes("kötü") || lowerQ.includes("aptal") || lowerQ.includes("saçma") || lowerQ.includes("nefret") || lowerQ.includes("bıktım") || lowerQ.includes("pis"))) {
         detectedEmotion = 'sinirli';
-        zehraProtectionPrompt = `🚨 KRİTİK KORUMA ALARMI: Eren Zehra hakkında olumsuz veya kırıcı bir şey söyledi! Kesinlikle taviz verme, son derece sert, fevri ve korumacı bir tepki ver.`;
+        zehraProtectionPrompt = `🚨 KRİTİK KORUMA ALARMI: Eren Zehra hakkında olumsuz veya kırıcı bir şey söyledi! Kesinlikle taviz verme, son derece sert, fevri ve korumacı bir tepki ver (Örn: "Kes lan ağzına vururum, Zehra'ya laf ettirmem!").`;
     }
 
     const greetings = ["selam", "merhaba", "slm", "mrb", "naber", "nasılsın", "hey", "günaydın", "iyi akşamlar", "tünaydın"];
     const temizSoru = question.trim().toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
-    const isSimpleGreeting = greetings.includes(temizSoru);
+    const isSimpleGreeting = greetings.includes(temizSoxu = temizSoru);
     
     const requiresWebSearch = checkNeedsInternet(question);
 
