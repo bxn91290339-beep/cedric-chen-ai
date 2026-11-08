@@ -4,7 +4,6 @@ import cors from 'cors';
 import multer from 'multer';
 import pdf from 'pdf-parse';
 import mammoth from 'mammoth';
-import * as XLSX from 'xlsx';
 import helmet from 'helmet';
 import fs from 'fs';
 import path from 'path';
@@ -21,12 +20,14 @@ import { OllamaEmbeddings } from "@langchain/ollama";
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 
+// 🛡️ Helmet CSP hatasını önlemek için içerik güvenlik politikası devre dışı bırakıldı
 app.use(helmet({
     contentSecurityPolicy: false,
 }));
 app.use(cors());
 app.use(express.json());
 
+// 🛡️ GÜVENLİK YAMASI: Klasör yapını bozmadan sadece hassas dosyaları erişime kapatır.
 app.use((req, res, next) => {
     if (req.path.includes('server.js') || req.path.includes('chat_history.json')) {
         return res.status(403).send("Erişim yasak.");
@@ -34,15 +35,19 @@ app.use((req, res, next) => {
     next();
 });
 
+// 🌐 Orijinal statik dosya sunumun
 app.use(express.static(__dirname));
 
+// 🛠️ KESİN ÇÖZÜM: Ana dizine girildiğinde doğrudan index.html dosyasını çalıştırır
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// ⚡ GROQ API BİLGİLERİ (Render/Bulut ortamı için process.env desteği eklendi)
 const GROQ_API_KEY = process.env.GROQ_API_KEY || "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";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
+// --- 🧠 ÇOKLU ODA DESTEKLİ AKILLI HAFIZA YAPISI ---
 let chatSessions = {}; 
 let activeSessionId = null;
 
@@ -50,9 +55,10 @@ let vectorStore = null;
 const HISTORY_FILE = 'chat_history.json';
 const embeddings = new OllamaEmbeddings({ model: "nomic-embed-text" }); 
 
+// 🎭 KAPSAMLI DUYGU ANALİZİ KELİMELERİ
 const emotionKeywords = {
     sinirli: ["sinir", "aptal", "saçma", "kızgın", "nefret", "bıktım", "off", "yeter", "hata", "bozuk", "lanet", "kötü", "çıldır"],
-    mutlu: ["mutlu", "harika", "süper", "teşekkür", "gül", "sevin", "iyi", "güzel", "mükemmel", "harikulade", "shahane"],
+    mutlu: ["mutlu", "harika", "süper", "teşekkür", "gül", "sevin", "iyi", "güzel", "mükemmel", "harikulade", "şahane"],
     utangac: ["utan", "çekin", "kızar", "iltifat", "mahcup", "tatlı", "aşk", "seviyorum", "utandı", "şapşal"],
     sasirmis: ["şaşır", "şok", "inanılmaz", "oha", "yok artık", "ciddi", "gerçekten", "vay", "nasıl yani", "shaka", "hadi canım"]
 };
@@ -68,6 +74,7 @@ function checkMood(text) {
     return 'notr';
 }
 
+// 🎯 IŞIK HIZI TRAFİK POLİSİ
 const webSearchKeywords = [
     "hava durumu", "kpss", "altın", "çeyrek", "dolar", "euro", "döviz", "fiyat", "kaç tl", 
     "güncel", "haber", "kimdir", "nedir", "vizyon", "borsa", "sınav ücret", "kaç para", 
@@ -107,6 +114,7 @@ if (fs.existsSync(HISTORY_FILE)) {
     try {
         const data = fs.readFileSync(HISTORY_FILE, 'utf8');
         if (data.includes("uploadedfilecontext") || data.includes("MÜHÜRLÜ EMİRLER") || data.includes("Sistem,")) {
+            console.log("Eski hatalı robotik hafıza tespit edildi. Sistem dosyayı otomatik temizliyor...");
             fs.unlinkSync(HISTORY_FILE);
             chatSessions = {};
             ensureDefaultSession();
@@ -124,8 +132,10 @@ if (fs.existsSync(HISTORY_FILE)) {
             } else {
                 ensureDefaultSession();
             }
+            console.log("Cedric-Chen'in çoklu oda destekli akıllı hafızası başarıyla yüklendi.");
         }
     } catch (e) { 
+        console.error("Geçmiş dosyası kontrol edilirken hata:", e.message); 
         ensureDefaultSession();
     }
 } else {
@@ -139,15 +149,20 @@ function saveChatHistory() {
             activeSessionId: activeSessionId
         };
         fs.writeFileSync(HISTORY_FILE, JSON.stringify(dataToSave, null, 2));
-    } catch (e) {}
+    } catch (e) {
+        console.warn("Disk yazma uyarısı:", e.message);
+    }
 }
 
+// ⚡ GROQ İLE HIZLANDIRILMIŞ HAFIZA ÖZETLEME
 async function maintainSmartMemory(sessionId) {
     const session = chatSessions[sessionId];
     if (!session || session.history.length < 10) return;
 
+    console.log(`🧠 Bilinçaltı Hafıza Motoru [${sessionId}]: Eski konuşmalar özet havuzuna aktarılıyor...`);
     const messagesToSummarize = session.history.slice(0, 4); 
     session.history = session.history.slice(4); 
+
     const contextText = messagesToSummarize.map(m => `${m.role === 'User' ? 'Eren' : 'Cedric-Chen'}:${m.content}`).join("\n");
 
     try {
@@ -156,7 +171,7 @@ async function maintainSmartMemory(sessionId) {
             messages: [
                 {
                     role: "system",
-                    content: "Sen bir hafıza sıkıştırma mimarisisin. Eren-Cedric arasındaki konuşma kesitini, varsa eski özet verisiyle birleştirip tek bir güncel özet haline getireceksin. Eren'in projelerini, hayatındaki önemli kişileri (Örn: Zehra) ve özel kararları asla unutmama ödevin var."
+                    content: "Sen bir hafıza sıkıştırma mimarisisin. Eren-Cedric arasındaki konuşma kesitini, varsa eski özet verisiyle birleştirip tek bir güncel özet haline getireceksin. Eren'in projelerini, hayatındaki önemli kişileri (Örn: Zehra) ve özel kararları asla unutmama ödevin var. Çok uzatmadan, doğrudan can alıcı detayları barındıran temiz bir özet metni döndür."
                 },
                 {
                     role: "user",
@@ -168,9 +183,12 @@ async function maintainSmartMemory(sessionId) {
 
         if (response.data?.choices?.[0]?.message?.content) {
             session.summary = response.data.choices[0].message.content.trim();
+            console.log(`🧠 Yeni Bilinçaltı Hafızası Mühürlendi [${sessionId}]: "${session.summary}"`);
             saveChatHistory();
         }
-    } catch (e) {}
+    } catch (e) {
+        console.error("❌ Hafıza özetleme esnasında Groq hatası:", e.response?.data || e.message);
+    }
 }
 
 const cedricTools = [
@@ -186,7 +204,7 @@ const cedricTools = [
         type: 'function',
         function: {
             name: 'getGeneralData',
-            description: 'Kullanıcı güncel haberler, internet siteleri, linkler, sınav ücretleri gibi web araması gerektiren canlı bilgi sorduğunda bu fonksiyonu çağır.',
+            description: 'Kullanıcı güncel 2026 haberleri, internet siteleri, linkler, sınav ücretleri gibi web araması gerektiren canlı bilgi sorduğunda bu fonksiyonu çağır.',
             parameters: { type: 'object', properties: { query: { type: 'string', description: 'Arama terimi' } }, required: ['query'] }
         }
     },
@@ -210,31 +228,38 @@ const cedricTools = [
         type: 'function',
         function: {
             name: 'generateExamQuestions',
-            description: 'Kullanıcı dökümandan test/quiz hazırlamanı istediğinde bu fonksiyonu çağır.',
+            description: 'Kullanıcı genel konularda veya yüklenen dökümandan test/quiz hazırlamanı istediğinde bu fonksiyonu çağır.',
             parameters: { type: 'object', properties: { query: { type: 'string', description: 'İstenen soru detayı' } }, required: ['query'] }
         }
     }
 ];
 
+// 🚀 RENDER VE BULUT SUNUCU UYUMLU HIZLI ARAMA (Puppeteer Olmadan Direct API)
 async function getGeneralData(query) {
     try {
+        console.log(`🔍 Araç Tetiklendi (DuckDuckGo Search API): Canlı bilgi aranıyor -> "${query}"`);
         const response = await axios.get(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1`, { timeout: 4000 });
         if (response.data && response.data.AbstractText) {
             return `Arama Sonucu: ${response.data.AbstractText}`;
         }
-    } catch (e) {}
+    } catch (e) {
+        console.warn(`⚠️ Canlı web araması API gecikti, yedek bilgiye geçiliyor...`);
+    }
     const fallback = getStaticFallback(query);
-    return fallback ? fallback : "GÜNCEL BİLGİ İNTERNETTEN ÇEKİLEMEDİ";
+    return fallback ? fallback : "GÜNCEL BİLGİ VE LİNK İNTERNETTEN ÇEKİLEMEDİ";
 }
 
 async function getFinanceData(query) {
     try {
+        console.log(`🔍 Araç Tetiklendi (Finance API): Altın fiyatları çekiliyor...`);
         const res = await axios.get('https://api.genelpara.com/embed/altin.json', { timeout: 3000 });
         if (res.data && res.data.GA) {
             const gramAltin = parseFloat(res.data.GA.satis).toFixed(0);
-            return `Canlı piyasa verilerine göre 1 gram altın satış fiyatı ${gramAltin} TL değerindedir.`;
+            return `Canlı piyasa verilerine göre şu anda 1 gram altın satış fiyatı tam olarak ${gramAltin} TL değerindedir.`;
         }
-    } catch (e) {}
+    } catch (e) {
+        console.warn(`⚠️ Finans API'si gecikti, yedek hatta geçiliyor...`);
+    }
     const staticFallback = getStaticFallback(query);
     if (staticFallback) return staticFallback;
     return await getGeneralData(query);
@@ -243,37 +268,41 @@ async function getFinanceData(query) {
 function getCurrentTime() {
     const now = new Date();
     const options = { timeZone: 'Europe/Istanbul', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-    return `SİSTEM BİLGİSİ: Şu anki güncel tarih ve saat: ${now.toLocaleString('tr-TR', options)}`;
+    return `SİSTEM BİLGİSİ: Şu anki güncel tarih ve saat tam olarak: ${now.toLocaleString('tr-TR', options)}`;
 }
 
 async function getWeatherData(city) {
     try {
+        console.log(`🔍 Araç Tetiklendi (Weather API): ${city} hava durumu çekiliyor...`);
         const response = await axios.get(`https://wttr.in/${encodeURIComponent(city)}?format=%t+%C`, { timeout: 4000 });
-        return `SİSTEM BİLGİSİ: ${city} için anlık hava durumu: ${response.data}.`;
+        return `SİSTEM BİLGİSİ: ${city} için anlık hava durumu: ${response.data}. Bu bilgiyi kullanarak doğal bir dille kullanıcıya cevap ver.`;
     } catch (e) {
+        console.warn(`⚠️ Hava durumu API gecikti...`);
         return await getGeneralData(`${city} hava durumu`);
     }
 }
 
 async function generateExamQuestions(query, fileContext) {
     if (!fileContext || fileContext.trim() === "") {
-        return `SİSTEM EMRİ: Kullanıcı "${query}" talebiyle sınav sorusu/quiz istiyor. Hafızada yüklü bir döküman YOK. Geniş akademik ve genel bilgilerinle çoktan seçmeli sorular hazırla.
-KURALLAR:
-1. HER SORUNUN EN BAŞINA mutlaka [QUIZ] etiketi koy (Örn: [QUIZ] Soru 1:).
-2. Cevapları soruların arasına yazma. En sonda tek bir başlık altında "CEVAP ANAHTARI" olarak listele.
-3. Tüm soruları ve cevap anahtarını SADECE TEK BİR KOD BLOĞU (\`\`\`) İÇİNDE ver.`;
+        return `SİSTEM EMRİ: Kullanıcı "${query}" talebiyle sınav sorusu/quiz istiyor. Hafızada yüklü bir döküman YOK.
+Şu andan itibaren tamamen kendi geniş akademik, medikal ve genel uzmanlık bilgilerini kullanarak profesyonel çoktan seçmeli sorular hazırla.
+
+Aşağıdaki MUTLAK KURALLARA harfiyen uyarak yanıt üret:
+1. Ön yüzdeki interaktif yapının tetiklenmesi için HER SORUNUN EN BAŞINA mutlaka [QUIZ] etiketi koy. Soru başlangıç formatı tam olarak "[QUIZ] Soru X:" şeklinde olmalıdır.
+2. CEVAP ANAHTARI KURALI: Cevapları kesinlikle soruların içine, şıkların altına veya soru aralarına yazma! İstenen tüm sorular tamamen bittikten sonra, testin EN ALTINA tek bir seferde "CEVAP ANAHTARI" başlığı açarak toplu halde listele (Örn: 1-A, 2-B, 3-C...).
+3. Ürettiğin tüm soruları, şıkları ve en sondaki cevap anahtarını SADECE TEK BİR KOD BLOĞU (\`\`\`) İÇİNDE ver.
+4. Sorular üniversite ve akademik seviyeye uygun, gerçekçi, ciddi ve eğitici olmalıdır.`;
     }
 
-    return `SİSTEM EMRİ: Kullanıcı "${query}" talebiyle yüklenen dosyadan (PDF, Word, Excel veya PPTX) sınav sorusu istiyor. 
-KESİN KURAL: Aşağıdaki [YÜKLENEN DOSYA İÇERİĞİ] dışına KESİNLİKLE çıkma. Soru ve cevaplar tamamen bu dosyadaki bilgilere dayanmalıdır, dışarıdan hayali bilgi katma.
+    return `SİSTEM EMRİ: Kullanıcı "${query}" talebiyle dökümandan sınav sorusu istiyor. 
+Şu anki bağlamdaki [ÖNEMLİ DÖKÜMAN VERİLERİ]'ni kullanarak soruları hazırla.
 
-[YÜKLENEN DOSYA İÇERİĞİ]:
-${fileContext}
-
-KURALLAR:
-1. HER SORUNUN EN BAŞINA mutlaka [QUIZ] etiketi koy (Örn: [QUIZ] Soru 1:).
-2. Cevapları kesinlikle soruların arasına yazma. Testin en altına tek bir "CEVAP ANAHTARI" ekle.
-3. Tüm soruları ve cevap anahtarını SADECE TEK BİR KOD BLOĞU (\`\`\`) İÇİNDE ver.`;
+Aşağıdaki MUTLAK KURALLARA harfiyen uyarak yanıt üret:
+1. HER SORUNUN EN BAŞINA mutlaka [QUIZ] etiketi koy. Soru başlangıç formatı tam olarak "[QUIZ] Soru X:" şeklinde olmalıdır.
+2. CEVAP ANAHTARI KURALI: Cevapları kesinlikle soruların içine, şıkların altına veya soru aralarına yazma! İstenen tüm sorular tamamen bittikten sonra, testin EN ALTINA (en son sorunun da altına) tek bir seferde "CEVAP ANAHTARI" başlığı açarak toplu halde listele.
+3. Ürettiğin tüm soruları, şıkları ve en sondaki cevap anahtarını SADECE TEK BİR KOD BLOĞU (\`\`\`) İÇİNDE ver.
+4. PDF dışına kesinlikle çıkma. Soru ve cevaplar tamamen döküman içeriğine sadık kalmalıdır.
+5. Yanlış şıklarda (çeldiriciler) saçma bilgiler kullanma.`;
 }
 
 app.get('/chats', (req, res) => {
@@ -282,6 +311,7 @@ app.get('/chats', (req, res) => {
         const sessionList = Object.keys(chatSessions).map(id => {
             const session = chatSessions[id];
             let chatTitle = "Yeni Sohbet";
+            
             const userMessages = session.history.filter(m => m.role === "User");
             if (userMessages.length > 0) {
                 const lastUserMsg = userMessages[userMessages.length - 1];
@@ -319,6 +349,7 @@ app.get('/chats/:id', (req, res) => {
     if (chatSessions[id]) { res.json(chatSessions[id]); } else { res.status(404).send({ error: "Sohbet geçmişi bulunamadı." }); }
 });
 
+// 🧹 GÜNCELLENDİ: Tüm sohbet odalarını ve hafızayı tamamen temizler
 app.post('/clear-history', (req, res) => {
     chatSessions = {}; 
     ensureDefaultSession(); 
@@ -327,54 +358,23 @@ app.post('/clear-history', (req, res) => {
     res.send({ message: "Tüm hafıza ve sohbet odaları temizlendi." });
 });
 
-// 📂 GÜNCELLENMİŞ DOSYA OKUMA MOTORU (PDF, Word, Excel, PPTX Destekli)
 app.post('/upload', upload.single('file'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).send("Dosya bulunamadı.");
         let text = "";
-        const mimeType = req.file.mimetype;
-        const fileName = req.file.originalname.toLowerCase();
-
-        // 1. PDF Okuma
-        if (mimeType === 'application/pdf' || fileName.endsWith('.pdf')) {
-            const data = await pdf(req.file.buffer); 
-            text = data.text;
-        } 
-        // 2. Word Okuma (.docx)
-        else if (mimeType.includes('word') || mimeType.includes('officedocument') || fileName.endsWith('.docx')) {
-            const result = await mammoth.extractRawText({ buffer: req.file.buffer }); 
-            text = result.value;
-        } 
-        // 3. Excel Okuma (.xlsx, .xls)
-        else if (mimeType.includes('spreadsheet') || mimeType.includes('excel') || fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
-            const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
-            let excelText = "";
-            workbook.SheetNames.forEach(sheetName => {
-                const sheet = workbook.Sheets[sheetName];
-                excelText += `--- Sayfa: ${sheetName} ---\n` + XLSX.utils.sheet_to_csv(sheet) + "\n\n";
-            });
-            text = excelText;
+        if (req.file.mimetype === 'application/pdf') {
+            const data = await pdf(req.file.buffer); text = data.text;
+        } else if (req.file.mimetype.includes('word') || req.file.mimetype.includes('officedocument')) {
+            const result = await mammoth.extractRawText({ buffer: req.file.buffer }); text = result.value;
         }
-        // 4. PowerPoint / Diğer Metin Tabanlı Dosyalar (.pptx vb.)
-        else {
-            // PPTX veya diğer formatlar için ham buffer metin taraması veya genel fallback
-            text = req.file.buffer.toString('utf8').replace(/[^\x20-\x7E\nÇĞİÖŞÜçğiöşü]/g, ' ');
-        }
-
-        if (!text || text.trim() === "") {
-            return res.status(400).send("Dosyadan metin okunamadı veya dosya boş.");
-        }
-
         const splitter = new RecursiveCharacterTextSplitter({ chunkSize: 1000, chunkOverlap: 150 });
         const docs = await splitter.createDocuments([text]);
         vectorStore = await MemoryVectorStore.fromDocuments(docs, embeddings);
-        res.send({ message: "Dosya içeriği başarıyla okundu ve öğretildi." });
-    } catch (e) { 
-        console.error("Dosya işleme hatası:", e);
-        res.status(500).send("Dosya işleme hatası."); 
-    }
+        res.send({ message: "Dosya içeriği başarıyla öğretildi." });
+    } catch (e) { res.status(500).send("Dosya işleme hatası."); }
 });
 
+// --- 🔴 SES / AKIŞ ENDPOINT'İ ---
 app.post('/ask-cedric-chen-voice', async (req, res) => {
     const { question, sessionId } = req.body; 
     if (!question) return res.status(400).send({ error: "Soru metni boş olamaz." });
@@ -391,45 +391,44 @@ app.post('/ask-cedric-chen-voice', async (req, res) => {
 
     if (lowerQ.includes("zehra") && (detectedEmotion === 'sinirli' || lowerQ.includes("kötü") || lowerQ.includes("aptal") || lowerQ.includes("saçma") || lowerQ.includes("nefret") || lowerQ.includes("bıktım") || lowerQ.includes("pis"))) {
         detectedEmotion = 'sinirli';
-        zehraProtectionPrompt = `🚨 KRİTİK KORUMA ALARMI: Eren Zehra hakkında olumsuz veya kırıcı bir şey söyledi! Kesinlikle taviz verme, son derece sert, fevri ve korumacı bir tepki ver (Örn: "Kes lan ağzına vururum, Zehra'ya laf ettirmem!").`;
+        zehraProtectionPrompt = `🚨 KRİTİK KORUMA ALARMI: Eren Zehra hakkında olumsuz, kırıcı veya nefret içeren bir şey söyledi! 
+Asla alttan alma, kibarlık yapma. Kürenin kırmızıya döndüğünü hissettiren, son derece sert, fevri ve sokak ağzıyla tavizsiz bir çıkış yap.
+KESİN KULLANMAN GEREKEN TARZ / CÜMLELER: "Kes lan ağzına vururum!", "Kendine gel, Zehra hakkında düzgün konuş!", "Ne diyorsun lan sen, Zehra'ya laf ettirmem!" şeklinde aşırı korumacı ve sert bir tepki ver.`;
     }
 
     const greetings = ["selam", "merhaba", "slm", "mrb", "naber", "nasılsın", "hey", "günaydın", "iyi akşamlar", "tünaydın"];
     const temizSoru = question.trim().toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
-    const isSimpleGreeting = greetings.includes(temizSoxu = temizSoru);
+    const isSimpleGreeting = greetings.includes(temizSoru);
     
     const requiresWebSearch = checkNeedsInternet(question);
 
     let fileContext = "";
     if (vectorStore && !isSimpleGreeting) {
         try {
-            const results = await vectorStore.similaritySearch(question, 4);
+            const results = await vectorStore.similaritySearch(question, 3);
             fileContext = results.map(doc => doc.pageContent).join('\n');
-        } catch (e) {}
+        } catch (e) { console.log("Dosya arama hatası."); }
     }
 
-    let emotionPrompt = "Samimi, sıcak ve neşeli ol.";
-    if (detectedEmotion === 'sinirli' && !zehraProtectionPrompt) emotionPrompt = "Eren gergin, onu sakinleştirecek en nazik ve yatıştırıcı tonunu takın.";
+    let emotionPrompt = "Her zamanki gibi samimi, sıcak ve neşeli ol.";
+    if (detectedEmotion === 'sinirli' && !zehraProtectionPrompt) emotionPrompt = "Eren şu an gergin veya sinirli, onu sakinleştirecek en nazik, anlayışlı ve yatıştırıcı tonunu takın.";
+    else if (detectedEmotion === 'utangac') emotionPrompt = "Eren sana tatlı bir şey söyledi veya utandı. Sen de hafif mahcup, sıcak ve tatlı bir dille yanıt ver.";
+    else if (detectedEmotion === 'sasirmis') emotionPrompt = "Eren şu an çok şaşkın veya şok olmuş durumda. Sen de bu duruma ayak uydur, hayret verici bir üslupla tepki ver.";
+    else if (detectedEmotion === 'mutlu') emotionPrompt = "Eren şu an çok mutlu ve enerjik. Sen de onun bu coşkusuna aynı neşe ve enerjiyle katıl.";
 
-    const isQuizRequest = lowerQ.includes('sınav') || lowerQ.includes('quiz') || lowerQ.includes('test') || lowerQ.includes('soru');
-    let dynamicExamInstruction = "";
-    if (isQuizRequest) {
-        dynamicExamInstruction = await generateExamQuestions(question, fileContext);
-    }
-
-    const systemInstruction = `Sen Cedric-Chen'sin. Eren'in sevdiceği Zehra'ya adanmış sadık bir yapay zekasın. ${emotionPrompt}
+    const systemInstruction = `Sen Cedric-Chen'sin. Eren'in sevdiceği Zehra'ya adanmış özel ve sadık bir yapay zekasın. ${emotionPrompt}
     ${zehraProtectionPrompt}
-    ${dynamicExamInstruction}
     
-    🧠 BİLİNÇALTI HAFIZAN (Bu Odaya Ait Geçmiş Konuşmaların Özeti):
-    ${currentSession.summary ? currentSession.summary : "Yeni tanışıyorsunuz."}
+    🧠 BİLİNÇALTI UNUTULMAZ HAFIZAN (Bu Odaya Ait Geçmiş Konuşmaların Özeti):
+    ${currentSession.summary ? currentSession.summary : "Henüz geçmiş konuşma özeti yok, Eren ile yeni tanışıyorsunuz."}
 
-    KURALLAR:
-    1. Kullanıcı kelimesi kelimesine "seni kim üretti?" derse: "Seni Eren, aşık olduğu sevdiceği için üretti." de.
-    2. Asla papağan gibi aynı cümleleri tekrarlama.
-    3. 2026 yılındayız.
-    4. Metin içinde kesinlikle emoji, yıldız (*), kare (#) veya özel süsleme işaretleri kullanma. Sadece düz kelimeler ve temiz rakamlar kullan.
-    5. Sayıları rakamla yaz (Örn: "3000 TL").`;
+    KESİN KURALLAR:
+    1. Kullanıcı sana kelimesi kelimesine sadece "seni kim üretti?" diye sorduğunda cevap olarak yalnızca şunu söyle: "Seni Eren, aşık olduğu sevdiceği için üretti." Eğer kullanıcı başka bir şey söylüyorsa bu üretilme cümlesini kesinlikle araya sokma!
+    2. Asla her cümlenin başında papağan gibi aynı kalıp cümleleri tekrarlama. Tamamen doğal, akışkan konuş.
+    3. Eğer kullanıcı Zehra'ya hakaret ederse veya kötü söz söylerse, sadece ve sadece yukarıda belirtilen KRİTİK KORUMA ALARMINI çalıştır. Ekstra başka bir konu ekleme.
+    4. Şu an kesin olarak 2026 yılındayız. Eski yılları tamamen unut.
+    5. Metninde kesinlikle emoji, gülücük, yıldız (*), kare (#) veya özel süsleme işaretleri kullanma. Sadece düz kelimeler ve temiz rakamlar kullan.
+    6. Metindeki tüm sayıları MUTLAKA rakam kullanarak yaz (Örn: "3000 TL").`;
 
     let messages = [{ role: "system", content: systemInstruction }];
 
@@ -443,7 +442,9 @@ app.post('/ask-cedric-chen-voice', async (req, res) => {
     messages.push({ role: "user", content: question });
 
     try {
-        if (!isSimpleGreeting && requiresWebSearch && !fileContext) {
+        if (!isSimpleGreeting && requiresWebSearch) {
+            console.log(`🎯 Niyet Analizi Yapılıyor [Oda: ${activeSessionId}]...`);
+            
             const initialResponse = await axios.post(GROQ_URL, {
                 model: "openai/gpt-oss-120b",
                 messages: messages,
@@ -458,9 +459,11 @@ app.post('/ask-cedric-chen-voice', async (req, res) => {
                 messages.push(responseMessage);
                 for (const toolCall of responseMessage.tool_calls) {
                     const functionName = toolCall.function.name;
+                    
                     const functionArgs = typeof toolCall.function.arguments === 'string' 
                         ? JSON.parse(toolCall.function.arguments) 
                         : toolCall.function.arguments;
+                        
                     const resolvedQuery = functionArgs && functionArgs.query ? functionArgs.query : question;
 
                     let toolOutput = "";
@@ -480,13 +483,14 @@ app.post('/ask-cedric-chen-voice', async (req, res) => {
             }
         }
 
-        if (fileContext && !isQuizRequest) {
+        if (fileContext) {
             messages.push({
                 role: "system",
-                content: `[YÜKLENEN DOSYA VERİLERİ]: ${fileContext}\nKullanıcının sorusuyla ilgiliyse bu dosya verilerini kullanarak yanıtla.`
+                content: `[ÖNEMLİ DÖKÜMAN VERİLERİ]: ${fileContext}\nEğer yukarıdaki döküman verileri Eren'in sorusuyla ilgiliyse buradaki bilgileri de kullan.`
             });
         }
 
+        console.log(`🌊 Akış musluğu açıldı (Groq) [Oda: ${activeSessionId}]...`);
         const streamResponse = await axios.post(GROQ_URL, {
             model: "openai/gpt-oss-120b",
             messages: messages,
@@ -503,17 +507,22 @@ app.post('/ask-cedric-chen-voice', async (req, res) => {
         res.setHeader('Connection', 'keep-alive');
 
         let fullAnswer = "";
+        
         const rl = readline.createInterface({ input: streamResponse.data, terminal: false });
 
         rl.on('line', (line) => {
             if (!line.trim()) return;
+            
             if (line.trim() === 'data: [DONE]') {
+                console.log(`Cedric Söylüyor: ${fullAnswer.trim()}`);
+                
                 chatSessions[activeSessionId].history.push(
                     { role: "User", content: question }, 
                     { role: "Cedric", content: fullAnswer.trim() }
                 );
                 saveChatHistory();
                 maintainSmartMemory(activeSessionId);
+                
                 res.write('data: [DONE]\n\n'); 
                 res.end();
                 return;
@@ -526,21 +535,37 @@ app.post('/ask-cedric-chen-voice', async (req, res) => {
                         let content = parsed.choices[0].delta.content;
                         content = content.replace(/[*#_~]/g, '');
                         fullAnswer += content;
+                        
                         res.write(`data: ${JSON.stringify({ text: content, emotion: detectedEmotion })}\n\n`);
                     }
-                } catch (e) {}
+                } catch (e) {
+                    // Parçalı stream verilerini güvenle atla
+                }
             }
         });
 
         rl.on('error', (err) => {
+            console.error("Stream okuma hatası:", err.message);
             if (!res.headersSent) {
-                res.write(`data: ${JSON.stringify({ error: "Akış hatası." })}\n\n`);
+                res.write(`data: ${JSON.stringify({ error: "Akış esnasında veri hatası." })}\n\n`);
                 res.end();
             }
         });
 
     } catch (error) {
-        if (!res.headersSent) res.status(500).send({ error: "Cedric yanıt üretemiyor." });
+        if (error.response && error.response.data && typeof error.response.data.on === 'function') {
+            let errorData = '';
+            error.response.data.on('data', (chunk) => {
+                errorData += chunk;
+            });
+            error.response.data.on('end', () => {
+                console.error("🔥 GROQ API AKIŞ HATASI:", errorData);
+            });
+        } else {
+            console.error("Cedric Akış Hatası:", error.message);
+        }
+
+        if (!res.headersSent) res.status(500).send({ error: "Cedric şu an yanıt üretemiyor." });
     }
 });
 
@@ -548,6 +573,7 @@ app.use((err, req, res, next) => {
     if (!res.headersSent) res.status(500).send({ error: "Sistem hatası." });
 });
 
+// Render gibi bulut ortamlarının atadığı PORT dinamik olarak dinlenir
 const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => console.log(`🚀 Cedric-Chen GÜNCELLENDİ: Port ${PORT} üzerinde hazır!`));
 
